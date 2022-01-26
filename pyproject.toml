@@ -1,0 +1,43 @@
+[tool.poetry]
+name = "2021_kg_seminar_04kadapter"
+version = "0.1.0"
+description = ""
+authors = ["fnk93 <f.krueger1993@gmail.com>"]
+
+[tool.poetry.dependencies]
+python = "^3.9"
+torch = "^1.10.1"
+torchvision = "^0.11.2"
+torchaudio = "^0.10.1"
+tqdm = "^4.62.3"
+boto3 = "^1.20.43"
+requests = "^2.27.1"
+regex = "^2022.1.18"
+sentencepiece = "^0.1.96"
+sacremoses = "^0.0.47"
+sklearn = "^0.0"
+tensorboardX = "^2.4.1"
+prettytable = "^3.0.0"
+nltk = "^3.6.7"
+pexpect = "^4.8.0"
+
+[tool.poetry.dev-dependencies]
+mypy = "^0.931"
+wemake-python-styleguide = "^0.16.0"
+flake8-pytest-style = "^1.6.0"
+nitpick = "^0.31.0"
+safety = "^1.10.3"
+pytest = "^6.2.5"
+pytest-cov = "^3.0.0"
+pytest-randomly = "^3.11.0"
+Sphinx = "^4.4.0"
+sphinx-autodoc-typehints = "^1.16.0"
+doc8 = "^0.10.1"
+m2r2 = "^0.3.2"
+tomlkit = "^0.8.0"
+pyformat = "^0.7"
+flake8-pyi = "^22.1.0"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
