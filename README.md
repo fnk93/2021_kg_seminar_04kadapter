@@ -155,3 +155,16 @@ bash run_example.sh
 
 ## Contact
 Feel free to contact Ruize Wang (rzwang18@fudan.edu.cn) if you have any further questions.
+
+## Datasets
+[GC](https://drive.google.com/open?id=1HlWw7Q6-dFSm9jNSCh4VaBf1PlGqt9im)
+[Tsinghua Cloud](https://cloud.tsinghua.edu.cn/f/6ec98dbd931b4da9a7f0/)
+
+## New datasets
+
+Entity Typing
+[LitWD1K, LitWD19K, LitWD48K](https://zenodo.org/record/4701190#.YW3sbHUza7I)
+[WN18RR](https://github.com/villmow/datasets_knowledge_embedding/tree/master/WN18RR)
+
+Relation Classification
+[FB15K-237](https://www.microsoft.com/en-us/download/details.aspx?id=52312)

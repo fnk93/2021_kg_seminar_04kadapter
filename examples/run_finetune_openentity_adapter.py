@@ -25,6 +25,7 @@ import glob
 import logging
 import os
 import random
+import shutil
 
 import numpy as np
 import torch
@@ -163,13 +164,54 @@ def train(args, train_dataset, model, tokenizer):
     logger.info("  Gradient Accumulation steps = %d", args.gradient_accumulation_steps)
     logger.info("  Total optimization steps = %d", t_total)
 
-    global_step = 0
+    logger.info("Try resume from checkpoint")
+    if args.restore:
+        if os.path.exists(os.path.join(args.output_dir, 'global_step.bin')):
+            logger.info("Load last checkpoint data")
+            global_step = torch.load(os.path.join(args.output_dir, 'global_step.bin'))
+            output_dir = os.path.join(args.output_dir, 'checkpoint-{}'.format(global_step))
+            logger.info("Load from output_dir {}".format(output_dir))
+
+            optimizer.load_state_dict(torch.load(os.path.join(output_dir, 'optimizer.bin')))
+            scheduler.load_state_dict(torch.load(os.path.join(output_dir, 'scheduler.bin')))
+            # args = torch.load(os.path.join(output_dir, 'training_args.bin'))
+            if hasattr(pretrained_model,'module'):
+                pretrained_model.module.load_state_dict(torch.load(os.path.join(output_dir, 'pytorch_pretrained_model.bin')))
+            else: # Take care of distributed/parallel training
+                pretrained_model.load_state_dict(torch.load(os.path.join(output_dir, 'pytorch_pretrained_model.bin')))
+            if hasattr(et_model,'module'):
+                et_model.module.load_state_dict(torch.load(os.path.join(output_dir, 'pytorch_model.bin')))
+            else:
+                et_model.load_state_dict(torch.load(os.path.join(output_dir, 'pytorch_model.bin')))
+
+
+            global_step += 1
+            start_epoch = int(global_step / len(train_dataloader))
+            start_step = global_step-start_epoch*len(train_dataloader)-1
+            logger.info("Start from global_step={} epoch={} step={}".format(global_step, start_epoch, start_step))
+            # if args.local_rank in [-1, 0]:
+            #     tb_writer = SummaryWriter(log_dir="runs/" + args.my_model_name, purge_step=global_step)
+
+        else:
+            global_step = 0
+            start_epoch = 0
+            start_step = 0
+            # if args.local_rank in [-1, 0]:
+            #     tb_writer = SummaryWriter(log_dir="runs/" + args.my_model_name, purge_step=global_step)
+
+            logger.info("Start from scratch")
+    else:
+        global_step = 0
+        start_epoch = 0
+        start_step = 0
+        logger.info("Start from scratch")
     tr_loss, logging_loss = 0.0, 0.0
     # model.zero_grad()
     pretrained_model.zero_grad()
     et_model.zero_grad()
 
-    train_iterator = trange(int(args.num_train_epochs), desc="Epoch", disable=args.local_rank not in [-1, 0])
+    # train_iterator = trange(int(args.num_train_epochs), desc="Epoch", disable=args.local_rank not in [-1, 0])
+    train_iterator = trange(start_epoch, int(args.num_train_epochs), desc="Epoch", disable=args.local_rank not in [-1, 0])
     set_seed(args)  # Added here for reproductibility (even between python 2 and 3)
     for _ in train_iterator:
         epoch_iterator = tqdm(train_dataloader, desc="Iteration", disable=args.local_rank not in [-1, 0])
@@ -242,6 +284,17 @@ def train(args, train_dataset, model, tokenizer):
                     model_to_save.save_pretrained(output_dir)
                     torch.save(args, os.path.join(output_dir, 'training_args.bin'))
                     logger.info("Saving model checkpoint to %s", output_dir)
+                    torch.save(optimizer.state_dict(), os.path.join(output_dir, 'optimizer.bin'))
+                    torch.save(scheduler.state_dict(), os.path.join(output_dir, 'scheduler.bin'))
+                    torch.save(args, os.path.join(output_dir, 'training_args.bin'))
+                    torch.save(global_step, os.path.join(args.output_dir, 'global_step.bin'))
+
+                    logger.info("Saving model checkpoint, optimizer, global_step to %s", output_dir)
+                    if (global_step/args.save_steps) > args.max_save_checkpoints:
+                        try:
+                            shutil.rmtree(os.path.join(args.output_dir, 'checkpoint-{}'.format(global_step-args.max_save_checkpoints*args.save_steps)))
+                        except OSError as e:
+                            print(e)
 
             if args.max_steps > 0 and global_step > args.max_steps:
                 epoch_iterator.close()
@@ -367,6 +420,7 @@ def load_and_cache_examples(args, task, tokenizer, dataset_type, evaluate=False)
             # HACK(label indices are swapped in RoBERTa pretrained model)
             label_list[1], label_list[2] = label_list[2], label_list[1]
         examples = processor.get_dev_examples(args.data_dir, dataset_type) if evaluate else processor.get_train_examples(args.data_dir, dataset_type)
+        # logger.info(examples)
         features = convert_examples_to_features_entity_typing(examples, label_list, args.max_seq_length, tokenizer, output_mode,
             cls_token_at_end=bool(args.model_type in ['xlnet']),            # xlnet has a cls token at the end
             cls_token=tokenizer.cls_token,
@@ -515,7 +569,9 @@ class AdapterModel(nn.Module):
         # pooler_output = outputs[1]
         hidden_states = outputs[2]
         num = len(hidden_states)
-        hidden_states_last = torch.zeros(sequence_output.size()).to('cuda')
+        # hidden_states_last = torch.zeros(sequence_output.size()).to('cuda')
+        hidden_states_last = torch.zeros(sequence_output.size()).to('dml')
+        # hidden_states_last = torch.zeros(sequence_output.size())
 
         adapter_hidden_states = []
         adapter_hidden_states_count = 0
@@ -681,6 +737,9 @@ def main():
     parser.add_argument('--meta_et_adaptermodel', default='',type=str, help='the pretrained entity typing adapter model')
     parser.add_argument('--meta_lin_adaptermodel', default='', type=str, help='the pretrained linguistic adapter model')
 
+    parser.add_argument("--restore", type=bool, default=True, help="Whether restore from the last checkpoint, is nochenckpoints, start from scartch")
+    parser.add_argument("--directml", type=bool, default=False, help="Whether to use DirectML or not")
+
     ## Other parameters
     parser.add_argument("--config_name", default="", type=str,
                         help="Pretrained config name or path if not the same as model_name")
@@ -769,13 +828,26 @@ def main():
 
     # Setup CUDA, GPU & distributed training
     if args.local_rank == -1 or args.no_cuda:
-        device = torch.device("cuda" if torch.cuda.is_available() and not args.no_cuda else "cpu")
-        args.n_gpu = torch.cuda.device_count()
+        if args.directml:
+            # device = torch.device('directml')
+            device = torch.device('directml')
+            args.n_gpu = 1
+            # args.n_gpu = 
+        else:
+            device = torch.device("cuda" if torch.cuda.is_available() and not args.no_cuda else "cpu")
+            args.n_gpu = torch.cuda.device_count()
     else:  # Initializes the distributed backend which will take care of sychronizing nodes/GPUs
-        torch.cuda.set_device(args.local_rank)
-        device = torch.device("cuda", args.local_rank)
-        torch.distributed.init_process_group(backend='nccl')
-        args.n_gpu = 1
+        if args.directml:
+            # torch.cuda.set_device(args.local_rank)
+            # to
+            device = torch.device("dml", args.local_rank)
+            torch.distributed.init_process_group(backend='nccl')
+            args.n_gpu = 1
+        else:
+            torch.cuda.set_device(args.local_rank)
+            device = torch.device("cuda", args.local_rank)
+            torch.distributed.init_process_group(backend='nccl')
+            args.n_gpu = 1
     args.device = device
 
     # Setup logging

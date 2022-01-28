@@ -121,13 +121,24 @@ class DataProcessor(object):
     @classmethod
     def _read_json(cls, input_file):
         with open(input_file, 'r', encoding='utf8') as f:
+            # all_lines = f.readlines()
             try:
+                # logger.info(input_file)
+                # logger.info(f.readlines())
                 return json.load(f)
             except json.JSONDecodeError as exc:
-                results = []
-                for line in f.readlines():
-                    results.append(json.loads(line))
-                return results
+                raise exc
+                # results = []
+                # # logger.info(f.readline())
+                # # logger.info(f.read(10))
+                # logger.info('Reading Lines')
+                # # all_lines = f.readlines()
+                # logger.info(all_lines[0])
+                # for line in all_lines:
+                #     logger.info(line)
+                #     results.append(json.loads(line))
+            # return results
+            # return json.load(f)
 
     @classmethod
     def _read_semeval_txt(clas, input_file):
