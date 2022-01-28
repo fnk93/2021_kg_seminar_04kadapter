@@ -21,6 +21,7 @@ prettytable = "^3.0.0"
 nltk = "^3.6.7"
 pexpect = "^4.8.0"
 datasets = "^1.18.1"
+pytorch-directml = "^1.8.0-alpha.0"
 
 [tool.poetry.dev-dependencies]
 mypy = "^0.931"
