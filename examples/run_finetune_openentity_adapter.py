@@ -737,8 +737,8 @@ def main():
     parser.add_argument('--meta_et_adaptermodel', default='',type=str, help='the pretrained entity typing adapter model')
     parser.add_argument('--meta_lin_adaptermodel', default='', type=str, help='the pretrained linguistic adapter model')
 
-    parser.add_argument("--restore", type=bool, default=True, help="Whether restore from the last checkpoint, is nochenckpoints, start from scartch")
-    parser.add_argument("--directml", type=bool, default=False, help="Whether to use DirectML or not")
+    parser.add_argument("--restore", action='store_true', default=False, help="Whether restore from the last checkpoint, is nochenckpoints, start from scartch")
+    parser.add_argument("--directml", action='store_true', default=False, help="Whether to use DirectML or not")
 
     ## Other parameters
     parser.add_argument("--config_name", default="", type=str,
@@ -829,11 +829,13 @@ def main():
     # Setup CUDA, GPU & distributed training
     if args.local_rank == -1 or args.no_cuda:
         if args.directml:
+            print('Using DirectML: {0}'.format(args.directml))
             # device = torch.device('directml')
-            device = torch.device('directml')
+            device = torch.device('dml')
             args.n_gpu = 1
             # args.n_gpu = 
         else:
+            print('Not using DirectML')
             device = torch.device("cuda" if torch.cuda.is_available() and not args.no_cuda else "cpu")
             args.n_gpu = torch.cuda.device_count()
     else:  # Initializes the distributed backend which will take care of sychronizing nodes/GPUs
