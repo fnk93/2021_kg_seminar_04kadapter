@@ -120,7 +120,7 @@ class InputFeatures(object):
         ]
         self.label = label
 
-
+# TODO: plug in datasets.load_dataset('cosmos_qa') if no data in folder
 def read_examples_origin(input_file, is_training):
     cont = 0
     examples = []
@@ -449,7 +449,11 @@ class AdapterModel(nn.Module):
         # pooler_output = outputs[1]
         hidden_states = outputs[2]
         num = len(hidden_states)
-        hidden_states_last = torch.zeros(sequence_output.size()).to('cuda')
+        try:
+            hidden_states_last = torch.zeros(sequence_output.size()).to('cuda')
+        except:
+            hidden_states_last = torch.zeros(sequence_output.size())
+
 
         adapter_hidden_states = []
         adapter_hidden_states_count = 0
@@ -614,6 +618,8 @@ def main():
                         help="The layer where add an adapter")
     parser.add_argument("--adapter_skip_layers", default=3, type=int,
                         help="The skip_layers of adapter according to bert layers")
+
+    parser.add_argument("--restore", action='store_true', default=False, help="Whether restore from the last checkpoint, is nochenckpoints, start from scartch")
 
     parser.add_argument('--meta_fac_adaptermodel', default='',type=str, help='the pretrained factual adapter model')
     parser.add_argument('--meta_et_adaptermodel', default='',type=str, help='the pretrained entity typing adapter model')
@@ -901,6 +907,48 @@ def main():
         logger.info("  Batch size = %d", args.train_batch_size)
         logger.info("  Num steps = %d", num_train_optimization_steps)
 
+        logger.info("Try resume from checkpoint")
+        if args.restore:
+            if os.path.exists(os.path.join(args.output_dir, 'global_step.bin')):
+                logger.info("Load last checkpoint data")
+                global_step = torch.load(os.path.join(args.output_dir, 'global_step.bin'))
+                output_dir = os.path.join(args.output_dir, 'checkpoint-{}'.format(global_step))
+                logger.info("Load from output_dir {}".format(output_dir))
+
+                optimizer.load_state_dict(torch.load(os.path.join(output_dir, 'optimizer.bin')))
+                scheduler.load_state_dict(torch.load(os.path.join(output_dir, 'scheduler.bin')))
+                # args = torch.load(os.path.join(output_dir, 'training_args.bin'))
+                if hasattr(pretrained_model,'module'):
+                    pretrained_model.module.load_state_dict(torch.load(os.path.join(output_dir, 'pytorch_pretrained_model.bin')))
+                else: # Take care of distributed/parallel training
+                    pretrained_model.load_state_dict(torch.load(os.path.join(output_dir, 'pytorch_pretrained_model.bin')))
+                if hasattr(cosmosqa_model,'module'):
+                    cosmosqa_model.module.load_state_dict(torch.load(os.path.join(output_dir, 'pytorch_model.bin')))
+                else:
+                    cosmosqa_model.load_state_dict(torch.load(os.path.join(output_dir, 'pytorch_model.bin')))
+
+
+                global_step += 1
+                start_epoch = int(global_step / len(train_dataloader))
+                start_step = global_step-start_epoch*len(train_dataloader)-1
+                logger.info("Start from global_step={} epoch={} step={}".format(global_step, start_epoch, start_step))
+                # if args.local_rank in [-1, 0]:
+                #     tb_writer = SummaryWriter(log_dir="runs/" + args.my_model_name, purge_step=global_step)
+
+            else:
+                global_step = 0
+                start_epoch = 0
+                start_step = 0
+                # if args.local_rank in [-1, 0]:
+                #     tb_writer = SummaryWriter(log_dir="runs/" + args.my_model_name, purge_step=global_step)
+
+                logger.info("Start from scratch")
+        else:
+            global_step = 0
+            start_epoch = 0
+            start_step = 0
+            logger.info("Start from scratch")
+
         best_acc = 0
         if args.freeze_bert:
             pretrained_model.eval()
@@ -963,6 +1011,28 @@ def main():
                     # tb_writer.add_scalar('lr', scheduler.get_lr()[0], global_step)
                     # tb_writer.add_scalar('loss', (tr_loss - logging_loss)/args.logging_steps, global_step)
                     logging_loss = tr_loss
+                if args.local_rank in [-1, 0] and args.save_steps > 0 and global_step % args.save_steps == 0:
+                    # Save model checkpoint
+                    output_dir = os.path.join(args.output_dir, 'checkpoint-{}'.format(global_step))
+                    if not os.path.exists(output_dir):
+                        os.makedirs(output_dir)
+                    model_to_save = cosmosqa_model.module if hasattr(cosmosqa_model, 'module') else cosmosqa_model  # Take care of distributed/parallel training
+                    model_to_save.save_pretrained(output_dir)
+                    model_to_save = pretrained_model.module if hasattr(pretrained_model, 'module') else pretrained_model  # Take care of distributed/parallel training
+                    model_to_save.save_pretrained(output_dir)
+                    torch.save(args, os.path.join(output_dir, 'training_args.bin'))
+                    logger.info("Saving model checkpoint to %s", output_dir)
+                    torch.save(optimizer.state_dict(), os.path.join(output_dir, 'optimizer.bin'))
+                    torch.save(scheduler.state_dict(), os.path.join(output_dir, 'scheduler.bin'))
+                    torch.save(args, os.path.join(output_dir, 'training_args.bin'))
+                    torch.save(global_step, os.path.join(args.output_dir, 'global_step.bin'))
+
+                    logger.info("Saving model checkpoint, optimizer, global_step to %s", output_dir)
+                    if (global_step/args.save_steps) > args.max_save_checkpoints:
+                        try:
+                            shutil.rmtree(os.path.join(args.output_dir, 'checkpoint-{}'.format(global_step-args.max_save_checkpoints*args.save_steps)))
+                        except OSError as e:
+                            print(e)
 
             # if (global_step + 1) %args.report_steps==0:
             #     tr_loss = 0

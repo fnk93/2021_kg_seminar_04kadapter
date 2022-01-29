@@ -616,7 +616,10 @@ class AdapterModel(nn.Module):
         # pooler_output = outputs[1]
         hidden_states = outputs[2]
         num = len(hidden_states)
-        hidden_states_last = torch.zeros(sequence_output.size()).to('cuda')
+        try:
+            hidden_states_last = torch.zeros(sequence_output.size()).to('cuda')
+        except:
+            hidden_states_last = torch.zeros(sequence_output.size())
 
         adapter_hidden_states = []
         adapter_hidden_states_count = 0
@@ -817,7 +820,7 @@ def main():
     parser.add_argument('--meta_lin_adaptermodel', default='', type=str, help='the pretrained linguistic adapter model')
     parser.add_argument('--meta_bertmodel', default='', type=str, help='the pretrained bert model')
 
-    parser.add_argument("--restore", type=bool, default=True, help="Whether restore from the last checkpoint, is nochenckpoints, start from scartch")
+    parser.add_argument("--restore", action='store_true', default=False, help="Whether restore from the last checkpoint, is nochenckpoints, start from scartch")
 
     parser.add_argument("--per_gpu_train_batch_size", default=8, type=int,
                         help="Batch size per GPU/CPU for training.")
