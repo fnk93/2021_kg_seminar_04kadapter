@@ -156,9 +156,28 @@ bash run_example.sh
 ## Contact
 Feel free to contact Ruize Wang (rzwang18@fudan.edu.cn) if you have any further questions.
 
+## Pre-trained Adapters
+
+[Google Cloud](https://drive.google.com/drive/folders/12mfLpYq4BTwdbLZnQsdwDJKubM9aOr9f)
+
 ## Datasets
+
+[Open Entity](https://www.cs.utexas.edu/~eunsol/html_pages/open_entity.html)
+[FIGER](https://drive.google.com/open?id=0B52yRXcdpG6MMnRNV3dTdGdYQ2M)
+[TACRED](https://nlp.stanford.edu/projects/tacred/)
+
+### FIGER, OpenEntity and TACRED
+
 [GC](https://drive.google.com/open?id=1HlWw7Q6-dFSm9jNSCh4VaBf1PlGqt9im)
 [Tsinghua Cloud](https://cloud.tsinghua.edu.cn/f/6ec98dbd931b4da9a7f0/)
+
+### SearchQA, CosmosQA, Quasar-T
+
+[SearchQA + Quasar-T](https://thunlp.oss-cn-qingdao.aliyuncs.com/OpenQA_data.tar.gz)
+[SearchQA](https://drive.google.com/drive/u/0/folders/1kBkQGooNyG0h8waaOJpgdGtOnlb1S649)
+[CosmosQA](https://github.com/wilburOne/cosmosqa/tree/master/data/)
+[Quasar-T](http://curtis.ml.cmu.edu/datasets/quasar/)
+[Quasar-T Background Corpus](https://lemurproject.org/clueweb09/)
 
 ## New datasets
 
