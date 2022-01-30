@@ -507,6 +507,7 @@ class PretrainedModel(nn.Module):
         if args.freeze_bert:
             for p in self.parameters():
                 p.requires_grad = False
+        self.directml = args.directml
 
     def forward(self, input_ids, attention_mask=None, token_type_ids=None, position_ids=None, head_mask=None,
                 labels=None, start_id=None):
@@ -534,6 +535,7 @@ class AdapterModel(nn.Module):
         self.config = pretrained_model_config
         self.args = args
         self.adapter_size = args.adapter_size
+        self.directml = args.directml
 
         class AdapterConfig:
             project_hidden_size: int = self.config.hidden_size
@@ -572,9 +574,9 @@ class AdapterModel(nn.Module):
         try:
             hidden_states_last = torch.zeros(sequence_output.size()).to('cuda')
         except:
-            try:
+            if self.directml:
                 hidden_states_last = torch.zeros(sequence_output.size()).to('dml')
-            except:
+            else:
                 hidden_states_last = torch.zeros(sequence_output.size())
         # hidden_states_last = torch.zeros(sequence_output.size())
 
