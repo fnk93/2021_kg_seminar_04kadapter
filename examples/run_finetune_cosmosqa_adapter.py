@@ -399,6 +399,7 @@ class AdapterModel(nn.Module):
         self.config = pretrained_model_config
         self.args = args
         self.adapter_size = args.adapter_size
+        self.directml = args.directml
 
         class AdapterConfig:
             project_hidden_size: int = self.config.hidden_size
@@ -452,8 +453,10 @@ class AdapterModel(nn.Module):
         try:
             hidden_states_last = torch.zeros(sequence_output.size()).to('cuda')
         except:
-            hidden_states_last = torch.zeros(sequence_output.size())
-
+            if self.directml:
+                hidden_states_last = torch.zeros(sequence_output.size()).to('dml')
+            else:
+                hidden_states_last = torch.zeros(sequence_output.size())
 
         adapter_hidden_states = []
         adapter_hidden_states_count = 0
@@ -620,6 +623,7 @@ def main():
                         help="The skip_layers of adapter according to bert layers")
 
     parser.add_argument("--restore", action='store_true', default=False, help="Whether restore from the last checkpoint, is nochenckpoints, start from scartch")
+    parser.add_argument("--directml", action='store_true', default=False, help="Whether to use DirectML or not")
 
     parser.add_argument('--meta_fac_adaptermodel', default='',type=str, help='the pretrained factual adapter model')
     parser.add_argument('--meta_et_adaptermodel', default='',type=str, help='the pretrained entity typing adapter model')
@@ -726,13 +730,28 @@ def main():
 
     # Setup CUDA, GPU & distributed training
     if args.local_rank == -1 or args.no_cuda:
-        device = torch.device("cuda" if torch.cuda.is_available() and not args.no_cuda else "cpu")
-        args.n_gpu = torch.cuda.device_count()
+        if args.directml:
+            print('Using DirectML: {0}'.format(args.directml))
+            # device = torch.device('directml')
+            device = torch.device('dml')
+            args.n_gpu = 1
+            # args.n_gpu = 
+        else:
+            print('Not using DirectML')
+            device = torch.device("cuda" if torch.cuda.is_available() and not args.no_cuda else "cpu")
+            args.n_gpu = torch.cuda.device_count()
     else:  # Initializes the distributed backend which will take care of sychronizing nodes/GPUs
-        torch.cuda.set_device(args.local_rank)
-        device = torch.device("cuda", args.local_rank)
-        torch.distributed.init_process_group(backend='nccl')
-        args.n_gpu = 1
+        if args.directml:
+            # torch.cuda.set_device(args.local_rank)
+            # to
+            device = torch.device("dml", args.local_rank)
+            torch.distributed.init_process_group(backend='nccl')
+            args.n_gpu = 1
+        else:
+            torch.cuda.set_device(args.local_rank)
+            device = torch.device("cuda", args.local_rank)
+            torch.distributed.init_process_group(backend='nccl')
+            args.n_gpu = 1
     args.device = device
 
     # Setup logging
