@@ -791,6 +791,8 @@ def main():
                         help="Log every X updates steps.")
     parser.add_argument('--save_steps', type=int, default=1000,
                         help="Save checkpoint every X updates steps.")
+    parser.add_argument('--max_save_checkpoints', type=int, default=500,
+                        help="The max amounts of checkpoint saving. Bigger than it will delete the former checkpoints")
     parser.add_argument("--eval_all_checkpoints", action='store_true',
                         help="Evaluate all checkpoints starting with the same prefix as model_name ending and ending with step number")
     parser.add_argument("--no_cuda", action='store_true',
