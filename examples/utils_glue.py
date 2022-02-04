@@ -188,6 +188,27 @@ class EntityTypeProcessor(DataProcessor):
         return examples
 
 
+class EntityTypeKGProcessor(EntityTypeProcessor):
+    """Processor for KG"""
+
+    def _create_examples(self, lines, set_type):
+        #TODO: fix this for kg
+        """Creates examples for the training and dev sets."""
+        examples = []
+        label_list = ['entity', 'location', 'time', 'organization', 'object', 'event', 'place', 'person', 'group']
+        for (i, line) in enumerate(lines):
+            guid = i
+            text_a = line['sent']
+            text_b = (line['start'], line['end'])
+            label = [0 for item in range(len(label_list))]
+            for item in line['labels']:
+                label[label_list.index(item)] = 1
+            examples.append(
+                InputExample(guid=guid, text_a=text_a, text_b=text_b, label=label)
+            )
+        return examples
+
+
 relations = ['per:siblings', 'per:parents', 'org:member_of', 'per:origin', 'per:alternate_names', 'per:date_of_death',
              'per:title', 'org:alternate_names', 'per:countries_of_residence', 'org:stateorprovince_of_headquarters',
              'per:city_of_death', 'per:schools_attended', 'per:employee_of', 'org:members', 'org:dissolved',
@@ -794,18 +815,21 @@ def compute_metrics(task_name, preds, labels):
 
 processors = {
     "entity_type": EntityTypeProcessor,
+    "entity_type_kg": EntityTypeKGProcessor,
     "tacred": TACREDProcessor,
     "semeval": SemEvalProcessor,
 }
 
 output_modes = {
     "entity_type": "classification",
+    "entity_type_kg": "classification",
     "tacred": "classification",
     "semeval": "classification",
 }
 
 GLUE_TASKS_NUM_LABELS = {
     "entity_type": 9,
+    "entity_type_kg": 9,
     "tacred": 42,
     "semeval": 19,
 }
