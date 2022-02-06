@@ -119,6 +119,11 @@ class DataProcessor(object):
             return lines
 
     @classmethod
+    def _read_txt(cls, input_file):
+        with open(input_file, 'r', encoding='utf8') as f:
+            return f.readlines()
+
+    @classmethod
     def _read_json(cls, input_file):
         with open(input_file, 'r', encoding='utf8') as f:
             # all_lines = f.readlines()
@@ -160,12 +165,12 @@ class EntityTypeProcessor(DataProcessor):
     def get_train_examples(self, data_dir, dataset_type=None):
         """See base class."""
         return self._create_examples(
-            self._read_json(os.path.join(data_dir, "train.json")), "train")
+            self._read_txt(os.path.join(data_dir, "train.txt")), "train")
 
-    def get_dev_examples(self, data_dir, dataset_type):
+    def get_dev_examples(self, data_dir, dataset_type='valid'):
         """See base class."""
         return self._create_examples(
-            self._read_json(os.path.join(data_dir, "{}.json".format(dataset_type))), dataset_type)
+            self._read_txt(os.path.join(data_dir, "{}.txt".format(dataset_type))), dataset_type)
 
     def get_labels(self):
         """See base class."""
@@ -190,6 +195,20 @@ class EntityTypeProcessor(DataProcessor):
 
 class EntityTypeKGProcessor(EntityTypeProcessor):
     """Processor for KG"""
+
+    def get_train_examples(self, data_dir, dataset_type=None):
+        """See base class."""
+        return self._create_examples(
+            self._read_json(os.path.join(data_dir, "train.json")), "train")
+
+    def get_dev_examples(self, data_dir, dataset_type):
+        """See base class."""
+        return self._create_examples(
+            self._read_json(os.path.join(data_dir, "{}.json".format(dataset_type))), dataset_type)
+
+    def get_labels(self):
+        """See base class."""
+        return [0, 1]
 
     def _create_examples(self, lines, set_type):
         #TODO: fix this for kg
