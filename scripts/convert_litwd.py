@@ -122,10 +122,10 @@ def convert_data(path: pathlib.Path, file: str, new_file: Optional[str] = None) 
 
 
 def main() -> None:
-    # convert_lit_wd_1k()
-    # convert_lit_wd_19k()
-    # convert_lit_wd_48k()
-    pass
+    convert_lit_wd_1k()
+    convert_lit_wd_19k()
+    convert_lit_wd_48k()
+    # pass
 
 
 if __name__ == '__main__':
