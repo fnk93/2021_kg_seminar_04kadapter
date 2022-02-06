@@ -29,7 +29,7 @@ with open(labels_file, 'r', encoding='utf-8') as fr:
         })
 
 types_file = BASE_PATH / 'entity_types.txt'
-with open(labels_file, 'r', encoding='utf-8') as fr:
+with open(types_file, 'r', encoding='utf-8') as fr:
     lines = fr.readlines()
     for line in lines:
         line_vals = line.strip().split('\t')
@@ -54,6 +54,7 @@ def get_label(id: str) -> str:
 
 
 def get_name(id: str) -> str:
+    # print(id)
     return wd_client.get(id).attributes['labels']['en']['value']
 
 
@@ -102,6 +103,7 @@ def convert_data(path: pathlib.Path, file: str, new_file: Optional[str] = None) 
             line_vals = line.strip().split('\t')
             txt_val_1 = labels.get(line_vals[0], '')
             txt_val_2 = labels.get(line_vals[2], '')
+            # print(types.get(line_vals[0], []))
             result = {
                 'sent': '{0} {1} .'.format(
                     txt_val_1,
