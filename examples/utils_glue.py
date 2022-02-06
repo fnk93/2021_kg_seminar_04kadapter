@@ -165,12 +165,12 @@ class EntityTypeProcessor(DataProcessor):
     def get_train_examples(self, data_dir, dataset_type=None):
         """See base class."""
         return self._create_examples(
-            self._read_txt(os.path.join(data_dir, "train.txt")), "train")
+            self._read_json(os.path.join(data_dir, "train.txt")), "train")
 
     def get_dev_examples(self, data_dir, dataset_type='valid'):
         """See base class."""
         return self._create_examples(
-            self._read_txt(os.path.join(data_dir, "{}.txt".format(dataset_type))), dataset_type)
+            self._read_json(os.path.join(data_dir, "{}.txt".format(dataset_type))), dataset_type)
 
     def get_labels(self):
         """See base class."""
@@ -212,9 +212,10 @@ class EntityTypeKGProcessor(EntityTypeProcessor):
 
     def _create_examples(self, lines, set_type):
         #TODO: fix this for kg
+        # human instead of person
         """Creates examples for the training and dev sets."""
         examples = []
-        label_list = ['entity', 'location', 'time', 'organization', 'object', 'event', 'place', 'person', 'group']
+        label_list = ['entity', 'location', 'time', 'organization', 'object', 'event', 'place', 'human', 'group']
         for (i, line) in enumerate(lines):
             guid = i
             text_a = line['sent']

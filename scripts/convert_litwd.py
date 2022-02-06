@@ -5,7 +5,7 @@ from wikidata.client import Client
 # from Wikidata.client
 # from qwikidata
 
-CHECKPOINT_LINES = 200
+CHECKPOINT_LINES = 100
 
 wd_client = Client()
 # print(test.get('Q20830929'))
@@ -14,6 +14,38 @@ wd_client = Client()
 # print(test.get('Q20830929').attributes['labels']['en']['value'])
 # print(wd_client.get('Q20830929').attributes['claims']['P31'][0]['mainsnak']['datavalue']['value']['id'])
 # print(test.get('Q5').attributes['labels']['en']['value'])
+BASE_PATH = pathlib.Path('data')
+
+labels_file = BASE_PATH / 'entity_labels_en.txt'
+labels = {}
+types = {}
+with open(labels_file, 'r', encoding='utf-8') as fr:
+    lines = fr.readlines()
+    for line in lines:
+        line_vals = line.strip().split('\t')
+        # print(line_vals)
+        labels.update({
+            line_vals[0]: line_vals[1],
+        })
+
+types_file = BASE_PATH / 'entity_types.txt'
+with open(labels_file, 'r', encoding='utf-8') as fr:
+    lines = fr.readlines()
+    for line in lines:
+        line_vals = line.strip().split('\t')
+        # print(line_vals)
+        if line_vals[0] in types.keys():
+            old_val = types.get(line_vals[0])
+            old_val.append(line_vals[1])
+            types.update({
+                line_vals[0]: old_val,
+            })
+        else:
+            types.update({
+                line_vals[0]: [line_vals[1]],
+            })
+
+# print(labels)
 
 
 def get_label(id: str) -> str:
@@ -68,14 +100,14 @@ def convert_data(path: pathlib.Path, file: str, new_file: Optional[str] = None) 
         lines = fr.readlines()
         for index, line in enumerate(lines[start_from:]):
             line_vals = line.strip().split('\t')
-            txt_val_1 = get_name(line_vals[0])
-            txt_val_2 = get_name(line_vals[2])
+            txt_val_1 = labels.get(line_vals[0], '')
+            txt_val_2 = labels.get(line_vals[2], '')
             result = {
                 'sent': '{0} {1} .'.format(
                     txt_val_1,
                     txt_val_2,
                 ),
-                'labels': [get_name(get_label(line_vals[0]))],
+                'labels': [get_name(type_id) for type_id in types.get(line_vals[0], [])],
                 'start': 0,
                 'end': len(txt_val_1),
                 'ents': [],
@@ -90,9 +122,10 @@ def convert_data(path: pathlib.Path, file: str, new_file: Optional[str] = None) 
 
 
 def main() -> None:
-    convert_lit_wd_1k()
-    convert_lit_wd_19k()
-    convert_lit_wd_48k()
+    # convert_lit_wd_1k()
+    # convert_lit_wd_19k()
+    # convert_lit_wd_48k()
+    pass
 
 
 if __name__ == '__main__':
