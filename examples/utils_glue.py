@@ -146,7 +146,7 @@ class DataProcessor(object):
             # return json.load(f)
 
     @classmethod
-    def _read_semeval_txt(clas, input_file):
+    def _read_semeval_txt(cls, input_file):
         with open(input_file, 'r', encoding='utf8') as f:
             examples = []
             example = []
