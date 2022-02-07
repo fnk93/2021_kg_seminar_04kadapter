@@ -96,7 +96,7 @@ def convert_data(path: pathlib.Path, file: str, new_file: Optional[str] = None) 
     if (path / new_file_str).exists():
         with open(path / new_file_str, 'r') as fr:
             all_lines = json.load(fr)
-            start_from = len(all_lines)
+            start_from = len(all_lines) + 1
     print('starting from line {0}'.format(start_from))
 
     with open(path / '{0}.txt'.format(file), 'r') as fr:
