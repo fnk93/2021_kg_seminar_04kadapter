@@ -4,6 +4,7 @@
 /data/Quasar-T
 /data/SearchQA
 /data/*/cached_train*
+/data/*/cached_test*
 /pretrained_models
 /proc_data
 /pytorch_transformers/__pycache__
