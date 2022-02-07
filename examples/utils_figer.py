@@ -232,8 +232,13 @@ def convert_examples_to_features_entity_typing(examples, label_list, max_seq_len
         start_id[start] = 1
         label_id = [0]*len(label_map)
         for l in example.label:
-            l = label_map[l]
-            label_id[l] = 1
+            # If label not in label list, no possibility to put to corresponding
+            # label to 1
+            try:
+                l = label_map[l]
+                label_id[l] = 1
+            except KeyError:
+                pass
 
         if ex_index < 5:
             logger.info("*** Example ***")
