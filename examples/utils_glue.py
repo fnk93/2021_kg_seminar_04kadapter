@@ -215,7 +215,7 @@ class EntityTypeKGProcessor(EntityTypeProcessor):
         # human instead of person
         """Creates examples for the training and dev sets."""
         examples = []
-        label_list = ['entity', 'location', 'time', 'organization', 'association football club', 'sports season', 'sovereign state', 'human', 'country']
+        label_list = ['film', 'location', 'time', 'organization', 'association football club', 'sports season', 'sovereign state', 'human', 'country']
         for (i, line) in enumerate(lines):
             guid = i
             text_a = line['sent']

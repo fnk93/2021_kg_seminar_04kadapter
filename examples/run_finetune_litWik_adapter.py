@@ -1,4 +1,3 @@
-# coding=utf-8
 # Copyright (c) Microsoft Corporation.
 # Licensed under the MIT license.
 
@@ -16,20 +15,18 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-""" k-adapter for OpenEntity"""
+""" k-adapter for FIGER"""
 
 from __future__ import absolute_import, division, print_function
 
 import argparse
-import glob
 import logging
-import os
+import os,time
 import random
-import shutil
 
 import numpy as np
 import torch
-import torch.nn as nn
+from torch import nn
 from torch.nn import CrossEntropyLoss, MSELoss, BCEWithLogitsLoss
 
 from torch.utils.data import (DataLoader, RandomSampler, SequentialSampler,
@@ -37,14 +34,13 @@ from torch.utils.data import (DataLoader, RandomSampler, SequentialSampler,
 from torch.utils.data.distributed import DistributedSampler
 from tensorboardX import SummaryWriter
 from tqdm import tqdm, trange
-
+import json
 import sys
+import shutil
+
 curPath = os.path.abspath(os.path.dirname(__file__))
 rootPath = os.path.split(curPath)[0]
 sys.path.append(rootPath)
-
-from pytorch_transformers.modeling_roberta import gelu
-
 from pytorch_transformers import (WEIGHTS_NAME, BertConfig,
                                   RobertaModel,
                                   BertForSequenceClassification, BertTokenizer,
@@ -55,11 +51,12 @@ from pytorch_transformers import (WEIGHTS_NAME, BertConfig,
                                   XLMTokenizer, XLNetConfig,
                                   XLNetForSequenceClassification,
                                   XLNetTokenizer)
+from pytorch_transformers.modeling_roberta import gelu
 
-from pytorch_transformers.my_modeling_roberta import RobertaForEntityTyping
+from pytorch_transformers.my_modeling_roberta import RobertaForFIGER
 from pytorch_transformers import AdamW, WarmupLinearSchedule
 
-from utils_glue import (compute_metrics, convert_examples_to_features_entity_typing,
+from utils_figer import (compute_metrics, convert_examples_to_features_entity_typing,
                         output_modes, processors)
 
 logger = logging.getLogger(__name__)
@@ -70,7 +67,7 @@ MODEL_CLASSES = {
     'bert': (BertConfig, BertForSequenceClassification, BertTokenizer),
     'xlnet': (XLNetConfig, XLNetForSequenceClassification, XLNetTokenizer),
     'xlm': (XLMConfig, XLMForSequenceClassification, XLMTokenizer),
-    'roberta': (RobertaConfig, RobertaForEntityTyping, RobertaTokenizer),
+    'roberta': (RobertaConfig, RobertaForFIGER, RobertaTokenizer),
 }
 
 def set_seed(args):
@@ -82,12 +79,11 @@ def set_seed(args):
 
 
 def train(args, train_dataset, model, tokenizer):
-    """ Train the model """
     pretrained_model = model[0]
-    et_model = model[1]
-
+    figer_model = model[1]
+    """ Train the model """
     # if args.local_rank in [-1, 0]:
-        # tb_writer = SummaryWriter(log_dir="runs/" + args.my_model_name)
+    #     tb_writer = SummaryWriter(log_dir="runs/" + args.my_model_name)
 
     args.train_batch_size = args.per_gpu_train_batch_size * max(1, args.n_gpu)
     train_sampler = RandomSampler(train_dataset) if args.local_rank == -1 else DistributedSampler(train_dataset)
@@ -103,14 +99,14 @@ def train(args, train_dataset, model, tokenizer):
     no_decay = ['bias', 'LayerNorm.weight']
     if args.freeze_bert:
         optimizer_grouped_parameters = [
-            {'params': [p for n, p in et_model.named_parameters() if not any(nd in n for nd in no_decay)], 'weight_decay': args.weight_decay},
-            {'params': [p for n, p in et_model.named_parameters() if any(nd in n for nd in no_decay)], 'weight_decay': 0.0}
+            {'params': [p for n, p in figer_model.named_parameters() if not any(nd in n for nd in no_decay)], 'weight_decay': args.weight_decay},
+            {'params': [p for n, p in figer_model.named_parameters() if any(nd in n for nd in no_decay)], 'weight_decay': 0.0}
             ]
     else:
         optimizer_grouped_parameters = [
-            {'params': [p for n, p in et_model.named_parameters() if not any(nd in n for nd in no_decay)],
+            {'params': [p for n, p in figer_model.named_parameters() if not any(nd in n for nd in no_decay)],
              'weight_decay': args.weight_decay},
-            {'params': [p for n, p in et_model.named_parameters() if any(nd in n for nd in no_decay)],
+            {'params': [p for n, p in figer_model.named_parameters() if any(nd in n for nd in no_decay)],
              'weight_decay': 0.0},
             {'params': [p for n, p in pretrained_model.named_parameters() if not any(nd in n for nd in no_decay)],
              'weight_decay': args.weight_decay},
@@ -125,29 +121,27 @@ def train(args, train_dataset, model, tokenizer):
         except ImportError:
             raise ImportError("Please install apex from https://www.github.com/nvidia/apex to use fp16 training.")
         if args.freeze_bert:
-            et_model, optimizer = amp.initialize(et_model, optimizer, opt_level=args.fp16_opt_level)
+            figer_model, optimizer = amp.initialize(figer_model, optimizer, opt_level=args.fp16_opt_level)
         else:
-            et_model, optimizer = amp.initialize(et_model, optimizer, opt_level=args.fp16_opt_level)
+            figer_model, optimizer = amp.initialize(figer_model, optimizer, opt_level=args.fp16_opt_level)
             pretrained_model, optimizer = amp.initialize(pretrained_model, optimizer, opt_level=args.fp16_opt_level)
-
 
     # multi-gpu training (should be after apex fp16 initialization)
     if args.n_gpu > 1:
         if args.freeze_bert:
-            et_model = torch.nn.DataParallel(et_model)
+            figer_model = torch.nn.DataParallel(figer_model)
         else:
             pretrained_model = torch.nn.DataParallel(pretrained_model)
-            et_model = torch.nn.DataParallel(et_model)
-
+            figer_model = torch.nn.DataParallel(figer_model)
 
     # Distributed training (should be after apex fp16 initialization)
     if args.local_rank != -1:
         if args.freeze_bert:
-            et_model = torch.nn.parallel.DistributedDataParallel(et_model, device_ids=[args.local_rank],
+            figer_model = torch.nn.parallel.DistributedDataParallel(figer_model, device_ids=[args.local_rank],
                                                               output_device=args.local_rank,
                                                               find_unused_parameters=True)
         else:
-            et_model = torch.nn.parallel.DistributedDataParallel(et_model, device_ids=[args.local_rank],
+            figer_model = torch.nn.parallel.DistributedDataParallel(figer_model, device_ids=[args.local_rank],
                                                                      output_device=args.local_rank,
                                                                      find_unused_parameters=True)
             pretrained_model = torch.nn.parallel.DistributedDataParallel(pretrained_model, device_ids=[args.local_rank],
@@ -179,10 +173,10 @@ def train(args, train_dataset, model, tokenizer):
                 pretrained_model.module.load_state_dict(torch.load(os.path.join(output_dir, 'pytorch_pretrained_model.bin')))
             else: # Take care of distributed/parallel training
                 pretrained_model.load_state_dict(torch.load(os.path.join(output_dir, 'pytorch_pretrained_model.bin')))
-            if hasattr(et_model,'module'):
-                et_model.module.load_state_dict(torch.load(os.path.join(output_dir, 'pytorch_model.bin')))
+            if hasattr(figer_model,'module'):
+                figer_model.module.load_state_dict(torch.load(os.path.join(output_dir, 'pytorch_task_model.bin')))
             else:
-                et_model.load_state_dict(torch.load(os.path.join(output_dir, 'pytorch_model.bin')))
+                figer_model.load_state_dict(torch.load(os.path.join(output_dir, 'pytorch_task_model.bin')))
 
 
             global_step += 1
@@ -208,22 +202,21 @@ def train(args, train_dataset, model, tokenizer):
     tr_loss, logging_loss = 0.0, 0.0
     # model.zero_grad()
     pretrained_model.zero_grad()
-    et_model.zero_grad()
-
+    figer_model.zero_grad()
     # train_iterator = trange(int(args.num_train_epochs), desc="Epoch", disable=args.local_rank not in [-1, 0])
-    train_iterator = trange(start_epoch, int(args.num_train_epochs), desc="Epoch", disable=args.local_rank not in [-1, 0])
     set_seed(args)  # Added here for reproductibility (even between python 2 and 3)
-    for _ in train_iterator:
-        epoch_iterator = tqdm(train_dataloader, desc="Iteration", disable=args.local_rank not in [-1, 0])
-        for step, batch in enumerate(epoch_iterator):
-            # if step>10:
-            #     break
+    for epoch in range(start_epoch, int(args.num_train_epochs)):
+        for step, batch in enumerate(train_dataloader):
+            start = time.time()
+            if args.restore and (step < start_step):
+                continue
+
             # model.train()
             if args.freeze_bert:
                 pretrained_model.eval()
             else:
                 pretrained_model.train()
-            et_model.train()
+            figer_model.train()
             batch = tuple(t.to(args.device) for t in batch)
             inputs = {'input_ids':      batch[0],
                       'attention_mask': batch[1],
@@ -232,8 +225,7 @@ def train(args, train_dataset, model, tokenizer):
                       'start_id':          batch[4],}
             # outputs = model(**inputs)
             pretrained_model_outputs = pretrained_model(**inputs)
-            outputs = et_model(pretrained_model_outputs,**inputs)
-
+            outputs = figer_model(pretrained_model_outputs,**inputs)
             loss = outputs[0]  # model outputs are always tuple in pytorch-transformers (see doc)
 
             if args.n_gpu > 1:
@@ -241,36 +233,30 @@ def train(args, train_dataset, model, tokenizer):
             if args.gradient_accumulation_steps > 1:
                 loss = loss / args.gradient_accumulation_steps
 
-            epoch_iterator.set_description("loss {}".format(loss))
-
+            # epoch_iterator.set_description("loss {}".format(loss))
+            logger.info("Epoch {}/{} - Iter {} / {}, loss = {:.5f}, time used = {:.3f}s".format(epoch, int(args.num_train_epochs),step,
+                                                                                             len(train_dataloader),
+                                                                                             loss.item(),
+                                                                                             time.time() - start))
             if args.fp16:
                 with amp.scale_loss(loss, optimizer) as scaled_loss:
                     scaled_loss.backward()
                 torch.nn.utils.clip_grad_norm_(amp.master_params(optimizer), args.max_grad_norm)
             else:
                 loss.backward()
-                # torch.nn.utils.clip_grad_norm_(model.parameters(), args.max_grad_norm)
+                torch.nn.utils.clip_grad_norm_(figer_model.parameters(), args.max_grad_norm)
                 torch.nn.utils.clip_grad_norm_(pretrained_model.parameters(), args.max_grad_norm)
-                torch.nn.utils.clip_grad_norm_(et_model.parameters(), args.max_grad_norm)
 
             tr_loss += loss.item()
             if (step + 1) % args.gradient_accumulation_steps == 0:
-                optimizer.step()
                 scheduler.step()  # Update learning rate schedule
-
+                optimizer.step()
                 # model.zero_grad()
                 pretrained_model.zero_grad()
-                et_model.zero_grad()
+                figer_model.zero_grad()
                 global_step += 1
 
                 if args.local_rank in [-1, 0] and args.logging_steps > 0 and global_step % args.logging_steps == 0:
-                    # Log metrics
-                    # if args.local_rank == -1 and args.evaluate_during_training:  # Only evaluate when single GPU otherwise metrics may not average well
-                        # results = evaluate(args, model, tokenizer)
-                        # for key, value in results.items():
-                        #     tb_writer.add_scalar('eval_{}'.format(key), value, global_step)
-                    # tb_writer.add_scalar('lr', scheduler.get_lr()[0], global_step)
-                    # tb_writer.add_scalar('loss', (tr_loss - logging_loss)/args.logging_steps, global_step)
                     logging_loss = tr_loss
 
                 if args.local_rank in [-1, 0] and args.save_steps > 0 and global_step % args.save_steps == 0:
@@ -278,10 +264,11 @@ def train(args, train_dataset, model, tokenizer):
                     output_dir = os.path.join(args.output_dir, 'checkpoint-{}'.format(global_step))
                     if not os.path.exists(output_dir):
                         os.makedirs(output_dir)
-                    model_to_save = et_model.module if hasattr(et_model, 'module') else et_model  # Take care of distributed/parallel training
+                    model_to_save = figer_model.module if hasattr(figer_model, 'module') else figer_model  # Take care of distributed/parallel training
                     model_to_save.save_pretrained(output_dir)
                     model_to_save = pretrained_model.module if hasattr(pretrained_model, 'module') else pretrained_model  # Take care of distributed/parallel training
                     model_to_save.save_pretrained(output_dir)
+
                     torch.save(args, os.path.join(output_dir, 'training_args.bin'))
                     logger.info("Saving model checkpoint to %s", output_dir)
                     torch.save(optimizer.state_dict(), os.path.join(output_dir, 'optimizer.bin'))
@@ -296,34 +283,46 @@ def train(args, train_dataset, model, tokenizer):
                         except OSError as e:
                             print(e)
 
+                if args.local_rank == -1 and args.evaluate_during_training and global_step %args.eval_steps== 0:  # Only evaluate when single GPU otherwise metrics may not average well
+                    model = (pretrained_model, figer_model)
+                    results = evaluate(args, model, tokenizer)
+
             if args.max_steps > 0 and global_step > args.max_steps:
-                epoch_iterator.close()
                 break
 
         if args.max_steps > 0 and global_step > args.max_steps:
-            train_iterator.close()
             break
-        model = (pretrained_model, et_model)
-        logger.info("***** evaluating *****")
-
         results = evaluate(args, model, tokenizer, prefix="")
-        # for key, value in results.items():
-        #     tb_writer.add_scalar('eval_{}'.format(key), value, global_step)
-    #
-    # if args.local_rank in [-1, 0]:
-    #     tb_writer.close()
+
 
     return global_step, tr_loss / global_step
-
+def accuracy(out, l):
+    cnt = 0
+    y1 = []
+    y2 = []
+    for x1, x2 in zip(out, l):
+        yy1 = []
+        yy2 = []
+        top = max(x1)
+        for i in range(len(x1)):
+            if x1[i] > 0 or x1[i] == top:
+                yy1.append(i)
+            if x2[i] > 0:
+                yy2.append(i)
+        y1.append(yy1)
+        y2.append(yy2)
+        cnt += set(yy1) == set(yy2)
+    return cnt, y1, y2
 save_results=[]
 def evaluate(args, model, tokenizer, prefix=""):
     pretrained_model = model[0]
-    et_model = model[1]
+    figer_model = model[1]
     # Loop to handle MNLI double evaluation (matched, mis-matched)
     eval_task_names = ("mnli", "mnli-mm") if args.task_name == "mnli" else (args.task_name,)
     eval_outputs_dirs = (args.output_dir, args.output_dir + '-MM') if args.task_name == "mnli" else (args.output_dir,)
+
     results = {}
-    for dataset_type in ['dev', 'test']:
+    for dataset_type in ['test']:
 
         for eval_task, eval_output_dir in zip(eval_task_names, eval_outputs_dirs):
 
@@ -342,19 +341,22 @@ def evaluate(args, model, tokenizer, prefix=""):
             logger.info("  Num examples = %d", len(eval_dataset))
             logger.info("  Batch size = %d", args.eval_batch_size)
             eval_loss = 0.0
+            eval_accuracy = 0
+            erine_eval_accuracy = 0
+            my_accuracy = 0
             nb_eval_steps = 0
+            nb_eval_examples = 0
             preds = None
             out_label_ids = None
-            eval_acc = 0
-            index=0
+            pred = []
+            true = []
+            erine_pred = []
+            erine_true = []
             for batch in tqdm(eval_dataloader, desc="Evaluating"):
                 pretrained_model.eval()
-                et_model.eval()
-                # model.eval()
-                index+=1
-                # if index>10:
-                #     break
+                figer_model.eval()
                 batch = tuple(t.to(args.device) for t in batch)
+
                 with torch.no_grad():
                     inputs = {'input_ids':      batch[0],
                               'attention_mask': batch[1],
@@ -363,38 +365,95 @@ def evaluate(args, model, tokenizer, prefix=""):
                               'start_id':          batch[4]}
                     # outputs = model(**inputs)
                     pretrained_model_outputs = pretrained_model(**inputs)
-                    outputs = et_model(pretrained_model_outputs,**inputs)
+                    outputs = figer_model(pretrained_model_outputs,**inputs)
                     tmp_eval_loss, logits = outputs[:2]
-
                     eval_loss += tmp_eval_loss.mean().item()
-                nb_eval_steps += 1
-
                 if preds is None:
                     preds = logits.detach().cpu().numpy()
                     out_label_ids = inputs['labels'].detach().cpu().numpy()
                 else:
                     preds = np.append(preds, logits.detach().cpu().numpy(), axis=0)
                     out_label_ids = np.append(out_label_ids, inputs['labels'].detach().cpu().numpy(), axis=0)
+                erine_preds = logits.detach().cpu().numpy()
+                erine_out_label_ids = inputs['labels'].detach().cpu().numpy()
+                tmp_eval_accuracy, tmp_pred, tmp_true = accuracy(preds, out_label_ids)
+                erine_tmp_eval_accuracy, erine_tmp_pred, erine_tmp_true = accuracy(erine_preds, erine_out_label_ids)
+
+                pred.extend(tmp_pred)
+                true.extend(tmp_true)
+                eval_accuracy += tmp_eval_accuracy
+
+                erine_pred.extend(erine_pred)
+                erine_true.extend(erine_true)
+                erine_eval_accuracy += erine_tmp_eval_accuracy
+
+                my_tmp = compute_metrics(eval_task,preds,out_label_ids)
+                my_cnt = my_tmp[0]
+                my_accuracy +=my_cnt
+                nb_eval_examples += inputs['input_ids'].size(0)
+                nb_eval_steps += 1
 
             eval_loss = eval_loss / nb_eval_steps
-            if args.task_name == 'entity_type':
-                pass
-            elif args.output_mode == "classification":
-                preds = np.argmax(preds, axis=1)
-            elif args.output_mode == "regression":
-                preds = np.squeeze(preds)
+
+            erine_eval_accuracy = erine_eval_accuracy / nb_eval_examples
+
+            def f1(p, r):
+                if r == 0.:
+                    return 0.
+                return 2 * p * r / float(p + r)
+
+            def loose_macro(true, pred):
+                num_entities = len(true)
+                p = 0.
+                r = 0.
+                for true_labels, predicted_labels in zip(true, pred):
+                    if len(predicted_labels) > 0:
+                        p += len(set(predicted_labels).intersection(set(true_labels))) / float(len(predicted_labels))
+                    if len(true_labels):
+                        r += len(set(predicted_labels).intersection(set(true_labels))) / float(len(true_labels))
+                precision = p / num_entities
+                recall = r / num_entities
+                return precision, recall, f1(precision, recall)
+
+            def loose_micro(true, pred):
+                num_predicted_labels = 0.
+                num_true_labels = 0.
+                num_correct_labels = 0.
+                for true_labels, predicted_labels in zip(true, pred):
+                    num_predicted_labels += len(predicted_labels)
+                    num_true_labels += len(true_labels)
+                    num_correct_labels += len(set(predicted_labels).intersection(set(true_labels)))
+                if num_predicted_labels > 0:
+                    precision = num_correct_labels / num_predicted_labels
+                else:
+                    precision = 0.
+                recall = num_correct_labels / num_true_labels
+                return precision, recall, f1(precision, recall)
 
             result = compute_metrics(eval_task, preds, out_label_ids)
-            logger.info('{} micro f1 result:{}'.format(dataset_type, result))
+            result = {'eval_loss': eval_loss,
+                      'ERINE_accuracy':erine_eval_accuracy,
+                      'ERINE_macro':loose_macro(true,pred),
+                      'ERINE_micro':loose_micro(true,pred)
+                    }
+
+            logger.info('{} result: '.format(dataset_type))  #cnt, acc, loose_micro(y2, y1), loose_macro(y2, y1)
+            logger.info('result:{}'.format(result))  #cnt, simple acc, loose_micro(y2, y1), loose_macro(y2, y1)
 
             results[dataset_type] = result
             save_result = str(results)
 
             save_results.append(save_result)
-            result_file = open(os.path.join(args.output_dir, args.my_model_name + '_result.txt'), 'w')
-            for line in save_results:
-                result_file.write(str(dataset_type)+':'+ str(line) + '\n')
-            result_file.close()
+            if os.path.exists(os.path.join(args.output_dir, args.my_model_name + '_result.txt')):
+                result_file = open(os.path.join(args.output_dir, args.my_model_name + '_result.txt'), 'a')
+                # for line in save_results:
+                result_file.write(str(results) + '\n')
+                result_file.close()
+            else:
+                result_file = open(os.path.join(args.output_dir, args.my_model_name + '_result.txt'), 'w')
+                for line in save_results:
+                    result_file.write(str(line) + '\n')
+                result_file.close()
     return results
 
 def load_and_cache_examples(args, task, tokenizer, dataset_type, evaluate=False):
@@ -415,13 +474,9 @@ def load_and_cache_examples(args, task, tokenizer, dataset_type, evaluate=False)
         features = torch.load(cached_features_file)
     else:
         logger.info("Creating features from dataset file at %s", args.data_dir)
-        label_list = processor.get_labels()
-        if task in ['mnli', 'mnli-mm'] and args.model_type in ['roberta']:
-            # HACK(label indices are swapped in RoBERTa pretrained model)
-            label_list[1], label_list[2] = label_list[2], label_list[1]
         examples = processor.get_dev_examples(args.data_dir, dataset_type) if evaluate else processor.get_train_examples(args.data_dir, dataset_type)
-        # logger.info(examples)
-        features = convert_examples_to_features_entity_typing(examples, label_list, args.max_seq_length, tokenizer, output_mode,
+
+        features = convert_examples_to_features_entity_typing(examples, args.label_list, args.max_seq_length, tokenizer, output_mode,
             cls_token_at_end=bool(args.model_type in ['xlnet']),            # xlnet has a cls token at the end
             cls_token=tokenizer.cls_token,
             cls_token_segment_id=2 if args.model_type in ['xlnet'] else 0,
@@ -466,6 +521,7 @@ class Adapter(nn.Module):
 
     def forward(self, hidden_states):
         down_projected = self.down_project(hidden_states)
+
         input_shape = down_projected.size()[:-1]
         attention_mask = torch.ones(input_shape, device=self.args.device)
         encoder_attention_mask = torch.ones(input_shape, device=self.args.device)
@@ -475,39 +531,29 @@ class Adapter(nn.Module):
             extended_attention_mask = attention_mask[:, None, None, :]
         extended_attention_mask = extended_attention_mask.to(dtype=next(self.parameters()).dtype)  # fp16 compatibility
         extended_attention_mask = (1.0 - extended_attention_mask) * -10000.0
-
         if encoder_attention_mask.dim() == 3:
             encoder_extended_attention_mask = encoder_attention_mask[:, None, :, :]
         if encoder_attention_mask.dim() == 2:
             encoder_extended_attention_mask = encoder_attention_mask[:, None, None, :]
+
         head_mask = [None] * self.adapter_config.num_hidden_layers
         encoder_outputs = self.encoder(down_projected,
                                        attention_mask=extended_attention_mask,
                                        head_mask=head_mask)
+
         up_projected = self.up_project(encoder_outputs[0])
         return hidden_states + up_projected
 
-    def init_weights(self):
-        for m in self.modules():
-            if isinstance(m, nn.Linear):
-                m.weight.data.uniform_(-self.adapter_config.initializer_range, self.adapter_config.initializer_range)
-                if not m.bias is None:
-                    m.bias.data.zero_()
-            elif isinstance(m, nn.Embedding):
-                m.weight.data.uniform_(-self.adapter_config.initializer_range, self.adapter_config.initializer_range)
-
-
-
 class PretrainedModel(nn.Module):
-    def __init__(self, args):
+    def __init__(self, args,num_labels):
         super(PretrainedModel, self).__init__()
         self.model = RobertaModel.from_pretrained("roberta-large", output_hidden_states=True)
         self.config = self.model.config
         self.config.freeze_adapter = args.freeze_adapter
+        self.config.num_labels = num_labels
         if args.freeze_bert:
             for p in self.parameters():
                 p.requires_grad = False
-        self.directml = args.directml
 
     def forward(self, input_ids, attention_mask=None, token_type_ids=None, position_ids=None, head_mask=None,
                 labels=None, start_id=None):
@@ -519,15 +565,14 @@ class PretrainedModel(nn.Module):
 
         return outputs  # (loss), logits, (hidden_states), (attentions)
     def save_pretrained(self, save_directory):
-        assert os.path.isdir(save_directory), "Saving path should be a directory where the model and configuration can be saved"
-        # Only save the model it-self if we are using distributed training
+        assert os.path.isdir(
+            save_directory), "Saving path should be a directory where the model and configuration can be saved"
+
         model_to_save = self.module if hasattr(self, 'module') else self
-        # Save configuration file
         model_to_save.config.save_pretrained(save_directory)
-        # If we save using the predefined names, we can load using `from_pretrained`
         output_model_file = os.path.join(save_directory, "pytorch_pretrained_model.bin")
         torch.save(model_to_save.state_dict(), output_model_file)
-        logger.info("Saving model checkpoint to %s", save_directory)
+        logger.info("Saving pretrained model checkpoint to %s", save_directory)
 
 class AdapterModel(nn.Module):
     def __init__(self, args, pretrained_model_config):
@@ -560,6 +605,7 @@ class AdapterModel(nn.Module):
             vocab_size: int=50265
 
         self.adapter_config = AdapterConfig
+
         self.adapter_skip_layers = self.args.adapter_skip_layers
         self.adapter_list = args.adapter_list
         self.adapter_num = len(self.adapter_list)
@@ -578,7 +624,6 @@ class AdapterModel(nn.Module):
                 hidden_states_last = torch.zeros(sequence_output.size()).to('dml')
             else:
                 hidden_states_last = torch.zeros(sequence_output.size())
-        # hidden_states_last = torch.zeros(sequence_output.size())
 
         adapter_hidden_states = []
         adapter_hidden_states_count = 0
@@ -590,22 +635,21 @@ class AdapterModel(nn.Module):
             if self.adapter_skip_layers >= 1:
                 if adapter_hidden_states_count % self.adapter_skip_layers == 0:
                     hidden_states_last = hidden_states_last + adapter_hidden_states[int(adapter_hidden_states_count/self.adapter_skip_layers)]
-
         outputs = (hidden_states_last,) + outputs[2:]
-
         return outputs  # (loss), logits, (hidden_states), (attentions)
 
+class FIGERModel(nn.Module):
+    def __init__(self, args, pretrained_model_config, fac_adapter,et_adapter,lin_adapter):
+        super(FIGERModel, self).__init__()
 
-class ETModel(nn.Module):
-    def __init__(self, args, pretrained_model_config, fac_adapter, et_adapter, lin_adapter):
-        super(ETModel, self).__init__()
         self.args = args
         self.config = pretrained_model_config
+        self.num_labels = self.config.num_labels
 
-        # self.adapter = AdapterModel(self.args, pretrained_model_config)
         self.fac_adapter = fac_adapter
         self.et_adapter = et_adapter
         self.lin_adapter = lin_adapter
+
         if args.freeze_adapter and (self.fac_adapter is not None):
             for p in self.fac_adapter.parameters():
                 p.requires_grad = False
@@ -623,19 +667,26 @@ class ETModel(nn.Module):
         if self.lin_adapter is not None:
             self.adapter_num += 1
 
+        if self.args.task_adapter:
+            self.adapter_num += 1
+            self.task_adapter = AdapterModel(self.args, pretrained_model_config)
+
         if self.args.fusion_mode == 'concat':
             self.task_dense_lin = nn.Linear(self.config.hidden_size + self.config.hidden_size, self.config.hidden_size)
             self.task_dense_fac = nn.Linear(self.config.hidden_size + self.config.hidden_size, self.config.hidden_size)
             self.task_dense = nn.Linear(self.config.hidden_size + self.config.hidden_size, self.config.hidden_size)
 
-        # self.num_labels = config.num_labels
-        self.num_labels = 9
         self.dense = nn.Linear(self.config.hidden_size, self.config.hidden_size)
         self.dropout = nn.Dropout(self.config.hidden_dropout_prob)
-        self.out_proj = nn.Linear(self.config.hidden_size, 9)
+        self.out_proj = nn.Linear(self.config.hidden_size, self.num_labels)
 
-    def forward(self, pretrained_model_outputs, input_ids, attention_mask=None, token_type_ids=None, position_ids=None, head_mask=None,
+
+    def forward(self,pretrained_model_outputs,input_ids, attention_mask=None, token_type_ids=None, position_ids=None, head_mask=None,
                 labels=None, start_id=None):
+
+        batch = input_ids.size(0)
+        # print('input_ids:{}'.format(input_ids))
+        # print('attention_mask:{}'.format(attention_mask))
         pretrained_model_last_hidden_states = pretrained_model_outputs[0]
         if self.fac_adapter is not None:
             fac_adapter_outputs, _ = self.fac_adapter(pretrained_model_outputs)
@@ -643,8 +694,13 @@ class ETModel(nn.Module):
             et_adapter_outputs, _ = self.et_adapter(pretrained_model_outputs)
         if self.lin_adapter is not None:
             lin_adapter_outputs, _ = self.lin_adapter(pretrained_model_outputs)
+        if self.args.task_adapter:
+            task_adapter_outputs, _ = self.task_adapter(pretrained_model_outputs)
+
         if self.args.fusion_mode == 'add':
             task_features = pretrained_model_last_hidden_states
+            if self.args.task_adapter:
+                task_features = task_features + task_adapter_outputs
             if self.fac_adapter is not None:
                 task_features = task_features + fac_adapter_outputs
             if self.et_adapter is not None:
@@ -677,29 +733,33 @@ class ETModel(nn.Module):
         return outputs  # (loss), logits, (hidden_states), (attentions)
 
     def save_pretrained(self, save_directory):
-        assert os.path.isdir(save_directory), "Saving path should be a directory where the model and configuration can be saved"
+        assert os.path.isdir(
+            save_directory), "Saving path should be a directory where the model and configuration can be saved"
         # Only save the model it-self if we are using distributed training
         model_to_save = self.module if hasattr(self, 'module') else self
         # Save configuration file
         model_to_save.config.save_pretrained(save_directory)
         # If we save using the predefined names, we can load using `from_pretrained`
-        output_model_file = os.path.join(save_directory, "pytorch_model.bin")
+        output_model_file = os.path.join(save_directory, "pytorch_task_model.bin")
         torch.save(model_to_save.state_dict(), output_model_file)
-        logger.info("Saving model checkpoint to %s", save_directory)
+        logger.info("Saving task model checkpoint to %s", save_directory)
+
 
 def load_pretrained_adapter(adapter, adapter_path):
     new_adapter= adapter
     model_dict = new_adapter.state_dict()
+    logger.info('Adapter model weight:')
+    logger.info(new_adapter.state_dict().keys())
+    # print(model_dict['bert.encoder.layer.2.intermediate.dense.weight'])
+    logger.info('Load model state dict from {}'.format(adapter_path))
     adapter_meta_dict = torch.load(adapter_path, map_location=lambda storage, loc: storage)
     for item in ['out_proj.bias', 'out_proj.weight', 'dense.weight',
                  'dense.bias']:  # 'adapter.down_project.weight','adapter.down_project.bias','adapter.up_project.weight','adapter.up_project.bias'
         if item in adapter_meta_dict:
             adapter_meta_dict.pop(item)
-
     changed_adapter_meta = {}
     for key in adapter_meta_dict.keys():
         changed_adapter_meta[key.replace('adapter.', 'adapter.')] = adapter_meta_dict[key]
-
     changed_adapter_meta = {k: v for k, v in changed_adapter_meta.items() if k in model_dict.keys()}
     model_dict.update(changed_adapter_meta)
     new_adapter.load_state_dict(model_dict)
@@ -722,31 +782,6 @@ def main():
     parser.add_argument("--output_dir", default=None, type=str, required=True,
                         help="The output directory where the model predictions and checkpoints will be written.")
 
-    parser.add_argument("--freeze_bert", default=True, type=bool,
-                        help="freeze the parameters of pretrained model.")
-    parser.add_argument("--freeze_adapter", default=False, type=bool,
-                        help="freeze the parameters of adapter.")
-
-    parser.add_argument("--test_mode", default=0, type=int,
-                        help="test freeze adapter")
-
-    parser.add_argument('--fusion_mode', type=str, default='concat',help='the fusion mode for bert feautre and adapter feature |add|concat')
-    parser.add_argument("--adapter_transformer_layers", default=2, type=int,
-                        help="The transformer layers of adapter.")
-    parser.add_argument("--adapter_size", default=768, type=int,
-                        help="The hidden size of adapter.")
-    parser.add_argument("--adapter_list", default="0,11,22", type=str,
-                        help="The layer where add an adapter")
-    parser.add_argument("--adapter_skip_layers", default=3, type=int,
-                        help="The skip_layers of adapter according to bert layers")
-
-    parser.add_argument('--meta_fac_adaptermodel', default='',type=str, help='the pretrained factual adapter model')
-    parser.add_argument('--meta_et_adaptermodel', default='',type=str, help='the pretrained entity typing adapter model')
-    parser.add_argument('--meta_lin_adaptermodel', default='', type=str, help='the pretrained linguistic adapter model')
-
-    parser.add_argument("--restore", action='store_true', default=False, help="Whether restore from the last checkpoint, is nochenckpoints, start from scartch")
-    parser.add_argument("--directml", action='store_true', default=False, help="Whether to use DirectML or not")
-
     ## Other parameters
     parser.add_argument("--config_name", default="", type=str,
                         help="Pretrained config name or path if not the same as model_name")
@@ -765,6 +800,32 @@ def main():
                         help="Rul evaluation during training at each logging step.")
     parser.add_argument("--do_lower_case", action='store_true',
                         help="Set this flag if you are using an uncased model.")
+
+    parser.add_argument("--freeze_bert", default=True, type=bool,
+                        help="freeze the parameters of pretrained model.")
+    parser.add_argument("--freeze_adapter", default=False, type=bool,
+                        help="freeze the parameters of adapter.")
+    parser.add_argument("--test_mode", default=0, type=int,
+                        help="test freeze adapter")
+
+    parser.add_argument('--fusion_mode', type=str, default='concat',help='the fusion mode for bert feautre and adapter feature |add|concat')
+    parser.add_argument("--adapter_transformer_layers", default=2, type=int,
+                        help="The transformer layers of adapter.")
+    parser.add_argument("--adapter_size", default=768, type=int,
+                        help="The hidden size of adapter.")
+    parser.add_argument("--adapter_list", default="0,11,22", type=str,
+                        help="The layer where add an adapter")
+    parser.add_argument("--adapter_skip_layers", default=3, type=int,
+                        help="The skip_layers of adapter according to bert layers")
+
+    parser.add_argument('--task_adapter', default='',type=str, help='Whether to use task adapter')
+    parser.add_argument('--meta_fac_adaptermodel', default='',type=str, help='the pretrained factual adapter model')
+    parser.add_argument('--meta_et_adaptermodel', default='',type=str, help='the pretrained entity typing adapter model')
+    parser.add_argument('--meta_lin_adaptermodel', default='', type=str, help='the pretrained linguistic adapter model')
+    parser.add_argument('--meta_bertmodel', default='', type=str, help='the pretrained bert model')
+
+    parser.add_argument("--restore", action='store_true', default=False, help="Whether restore from the last checkpoint, is nochenckpoints, start from scartch")
+    parser.add_argument("--directml", action='store_true', default=False, help="Whether to use DirectML or not")
 
     parser.add_argument("--per_gpu_train_batch_size", default=8, type=int,
                         help="Batch size per GPU/CPU for training.")
@@ -787,10 +848,14 @@ def main():
     parser.add_argument("--warmup_steps", default=0, type=int,
                         help="Linear warmup over warmup_steps.")
 
-    parser.add_argument('--logging_steps', type=int, default=10,
+    parser.add_argument('--logging_steps', type=int, default=50,
                         help="Log every X updates steps.")
+    parser.add_argument('--eval_steps', type=int, default=None,
+                        help="eval every X updates steps.")
     parser.add_argument('--save_steps', type=int, default=1000,
                         help="Save checkpoint every X updates steps.")
+    parser.add_argument('--max_save_checkpoints', type=int, default=500,
+                        help="The max amounts of checkpoint saving. Bigger than it will delete the former checkpoints")
     parser.add_argument("--eval_all_checkpoints", action='store_true',
                         help="Evaluate all checkpoints starting with the same prefix as model_name ending and ending with step number")
     parser.add_argument("--no_cuda", action='store_true',
@@ -811,8 +876,6 @@ def main():
                         help="For distributed training: local_rank")
     parser.add_argument('--server_ip', type=str, default='', help="For distant debugging.")
     parser.add_argument('--server_port', type=str, default='', help="For distant debugging.")
-    parser.add_argument('--meta_bertmodel', default='', type=str, help='the pretrained bert model')
-    parser.add_argument('--save_model_iteration', type=int, help='when to save the model..')
     args = parser.parse_args()
 
     args.adapter_list = args.adapter_list.split(',')
@@ -822,6 +885,8 @@ def main():
     args.my_model_name = args.task_name+'_'+name_prefix
     args.output_dir = os.path.join(args.output_dir, args.my_model_name)
 
+    if args.eval_steps is None:
+        args.eval_steps = args.save_steps*1
     # if os.path.exists(args.output_dir) and os.listdir(args.output_dir) and args.do_train and not args.overwrite_output_dir:
     #     raise ValueError("Output directory ({}) already exists and is not empty. Use --overwrite_output_dir to overcome.".format(args.output_dir))
 
@@ -837,19 +902,14 @@ def main():
     if args.local_rank == -1 or args.no_cuda:
         if args.directml:
             print('Using DirectML: {0}'.format(args.directml))
-            # device = torch.device('directml')
             device = torch.device('dml')
             args.n_gpu = 1
-            # args.n_gpu = 
         else:
-            print('Not using DirectML')
             device = torch.device("cuda" if torch.cuda.is_available() and not args.no_cuda else "cpu")
             args.n_gpu = torch.cuda.device_count()
     else:  # Initializes the distributed backend which will take care of sychronizing nodes/GPUs
         if args.directml:
-            # torch.cuda.set_device(args.local_rank)
-            # to
-            device = torch.device("dml", args.local_rank)
+            device = torch.device('dml', args.local_rank)
             torch.distributed.init_process_group(backend='nccl')
             args.n_gpu = 1
         else:
@@ -875,8 +935,38 @@ def main():
         raise ValueError("Task not found: %s" % (args.task_name))
     processor = processors[args.task_name]()
     args.output_mode = output_modes[args.task_name]
-    label_list = processor.get_labels()
+    if not os.path.exists(os.path.join(args.data_dir,'labels.json')):
+        logger.info("label_list not exist, creating.....")
+        with open(os.path.join(args.data_dir,'train.json'), 'r', encoding='utf8') as f:
+            examples = []
+            lines = json.load(f)
+            for (i, line) in enumerate(lines):
+                label = line['labels']
+                examples.append(label)
+            d = {}
+            for e in examples:
+                for l in e:
+                    if l in d:
+                        d[l] += 1
+                    else:
+                        d[l] = 1
+            for k, v in d.items():
+                d[k] = (len(examples) - v) * 1. / v
+
+            label_list = list(d.keys())
+            examples = []
+        with open(os.path.join(args.data_dir,'labels.json'), "w") as f:
+            json.dump(label_list, f)
+    else:
+        logger.info("label_list exist, loading.....")
+        with open(os.path.join(args.data_dir,'labels.json'), "r") as f:
+            label_list = json.load(f)
+        # label_list = json.load(os.path.join(args.data_dir,'labels.json'))
+
+
+    # label_list = processor.get_labels()
     num_labels = len(label_list)
+    args.label_list = label_list
 
     # Load pretrained model and tokenizer
     if args.local_rank not in [-1, 0]:
@@ -884,12 +974,12 @@ def main():
 
     args.model_type = args.model_type.lower()
     config_class, model_class, tokenizer_class = MODEL_CLASSES[args.model_type]
-    # config = config_class.from_pretrained(args.config_name if args.config_name else args.model_name_or_path, num_labels=num_labels, finetuning_task=args.task_name)
-    # tokenizer = tokenizer_class.from_pretrained(args.tokenizer_name if args.tokenizer_name else args.model_name_or_path, do_lower_case=args.do_lower_case)
+    config = config_class.from_pretrained(args.config_name if args.config_name else args.model_name_or_path, num_labels=num_labels, finetuning_task=args.task_name)
+    tokenizer = tokenizer_class.from_pretrained(args.tokenizer_name if args.tokenizer_name else args.model_name_or_path, do_lower_case=args.do_lower_case)
     # model = model_class.from_pretrained(args.model_name_or_path, from_tf=bool('.ckpt' in args.model_name_or_path), config=config)
 
     tokenizer = RobertaTokenizer.from_pretrained('roberta-large')
-    pretrained_model = PretrainedModel(args)
+    pretrained_model = PretrainedModel(args, num_labels)
     if args.meta_fac_adaptermodel:
         fac_adapter = AdapterModel(args, pretrained_model.config)
         fac_adapter = load_pretrained_adapter(fac_adapter,args.meta_fac_adaptermodel)
@@ -906,7 +996,8 @@ def main():
     else:
         lin_adapter = None
     # adapter_model = AdapterModel(pretrained_model.config,num_labels,args.adapter_size,args.adapter_interval,args.adapter_skip_layers)
-    et_model = ETModel(args, pretrained_model.config, fac_adapter=fac_adapter, et_adapter=et_adapter, lin_adapter=lin_adapter)
+
+    figer_model = FIGERModel(args, pretrained_model.config, fac_adapter=fac_adapter, et_adapter=et_adapter, lin_adapter=lin_adapter)
 
     if args.meta_bertmodel:
         model_dict = pretrained_model.state_dict()
@@ -919,25 +1010,24 @@ def main():
         changed_bert_meta = {}
         for key in bert_meta_dict.keys():
             changed_bert_meta[key.replace('model.','roberta.')] = bert_meta_dict[key]
-        # print(changed_bert_meta.keys())
         changed_bert_meta = {k: v for k, v in changed_bert_meta.items() if k in model_dict.keys()}
-        # print(changed_bert_meta.keys())
         model_dict.update(changed_bert_meta)
         pretrained_model.load_state_dict(model_dict)
+
     if args.local_rank == 0:
         torch.distributed.barrier()  # Make sure only the first process in distributed training will download model & vocab
 
     pretrained_model.to(args.device)
-    et_model.to(args.device)
-    # model.to(args.device)
-    model = (pretrained_model, et_model)
+    figer_model.to(args.device)
+
+    model = (pretrained_model, figer_model)
 
     logger.info("Training/evaluation parameters %s", args)
-
+    # val_dataset = load_and_cache_examples(args, args.task_name, tokenizer, 'dev', evaluate=True)
 
     # Training
     if args.do_train:
-        train_dataset = load_and_cache_examples(args, args.task_name, tokenizer, 'train', evaluate=False)
+        train_dataset = load_and_cache_examples(args, args.task_name, tokenizer, dataset_type='train', evaluate=False)
         global_step, tr_loss = train(args, train_dataset, model, tokenizer)
         logger.info(" global_step = %s, average loss = %s", global_step, tr_loss)
 
@@ -948,13 +1038,16 @@ def main():
             os.makedirs(args.output_dir)
 
         logger.info("Saving model checkpoint to %s", args.output_dir)
-        # Save a trained model, configuration and tokenizer using `save_pretrained()`.
-        # They can then be reloaded using `from_pretrained()`
-        model_to_save = et_model.module if hasattr(et_model, 'module') else et_model  # Take care of distributed/parallel training
+        model_to_save = figer_model.module if hasattr(figer_model,
+                                                      'module') else figer_model  # Take care of distributed/parallel training
+        model_to_save.save_pretrained(args.output_dir)
+        model_to_save = pretrained_model.module if hasattr(pretrained_model,
+                                                           'module') else pretrained_model  # Take care of distributed/parallel training
         model_to_save.save_pretrained(args.output_dir)
         tokenizer.save_pretrained(args.output_dir)
+        torch.save(args, os.path.join(args.output_dir, 'training_args.bin'))
 
-    # # Evaluation
+    # Evaluation
     results = {}
     # if args.do_eval and args.local_rank in [-1, 0]:
     #     tokenizer = tokenizer_class.from_pretrained(args.output_dir, do_lower_case=args.do_lower_case)
@@ -965,21 +1058,20 @@ def main():
     #     logger.info("Evaluate the following checkpoints: %s", checkpoints)
     #     for checkpoint in checkpoints:
     #         global_step = checkpoint.split('-')[-1] if len(checkpoints) > 1 else ""
-    #         model = model_class.from_pretrained(checkpoint)
-    #         model.to(args.device)
+    #         # model = model_class.from_pretrained(checkpoint)
+    #         # model.to(args.device)
     #         result = evaluate(args, model, tokenizer, prefix=global_step)
-    #         logger.info('micro f1:{}'.format(result))
     #         result = dict((k + '_{}'.format(global_step), v) for k, v in result.items())
     #         results.update(result)
     # save_result = str(results)
-    # save_results.append(save_result)
     #
+    # save_results.append(save_result)
     # result_file = open(os.path.join(args.output_dir, args.my_model_name + '_result.txt'), 'w')
     # for line in save_results:
     #     result_file.write(str(line) + '\n')
     # result_file.close()
+    return results
 
-    # return results
 
 if __name__ == "__main__":
     main()
