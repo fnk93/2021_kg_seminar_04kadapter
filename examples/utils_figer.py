@@ -402,6 +402,8 @@ def compute_metrics(task_name, preds, labels):
         return figer_scores(preds, labels)
     elif task_name == 'tacred':
         return micro_f1_tacred(preds, labels)
+    elif task_name == 'entity_type_kg':
+        return figer_scores(preds, labels)
     else:
         raise KeyError(task_name)
 
