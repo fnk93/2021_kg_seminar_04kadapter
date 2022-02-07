@@ -1,5 +1,8 @@
 .idea
-/data
+/data/FB15K-237
+/data/FIGER
+/data/Quasar-T
+/data/SearchQA
 /pretrained_models
 /proc_data
 /pytorch_transformers/__pycache__
