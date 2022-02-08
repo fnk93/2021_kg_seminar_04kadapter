@@ -53,11 +53,14 @@ def get_label(id: str) -> str:
     return wd_client.get(id).attributes['claims']['P31'][0]['mainsnak']['datavalue']['value']['id']
 
 
-def get_name(id: str) -> str:
+def get_name(id: str) -> Optional[str]:
     # print(id)
     attributes = wd_client.get(id).attributes
     print(attributes)
-    return attributes['labels']['en']['value']
+    try:
+        return attributes['labels']['en']['value']
+    except KeyError:
+        return None
 
 
 def convert_lit_wd_1k() -> None:
@@ -108,12 +111,16 @@ def convert_data(path: pathlib.Path, file: str, new_file: Optional[str] = None) 
             txt_val_1 = labels.get(line_vals[0], '')
             txt_val_2 = labels.get(line_vals[2], '')
             # print(types.get(line_vals[0], []))
+            labels_pre = [get_name(type_id) for type_id in types.get(line_vals[0], [])]
+            labels = [x for x in labels_pre if x is not None]
+            if len(labels) <= 0:
+                continue
             result = {
                 'sent': '{0} {1} .'.format(
                     txt_val_1,
                     txt_val_2,
                 ),
-                'labels': [get_name(type_id) for type_id in types.get(line_vals[0], [])],
+                'labels': labels,
                 'start': 0,
                 'end': len(txt_val_1),
                 'ents': [],
