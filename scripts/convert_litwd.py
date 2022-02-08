@@ -112,15 +112,15 @@ def convert_data(path: pathlib.Path, file: str, new_file: Optional[str] = None) 
             txt_val_2 = labels.get(line_vals[2], '')
             # print(types.get(line_vals[0], []))
             labels_pre = [get_name(type_id) for type_id in types.get(line_vals[0], [])]
-            labels = [x for x in labels_pre if x is not None]
-            if len(labels) <= 0:
+            labels_list = [x for x in labels_pre if x is not None]
+            if len(labels_list) <= 0:
                 continue
             result = {
                 'sent': '{0} {1} .'.format(
                     txt_val_1,
                     txt_val_2,
                 ),
-                'labels': labels,
+                'labels': labels_list,
                 'start': 0,
                 'end': len(txt_val_1),
                 'ents': [],
