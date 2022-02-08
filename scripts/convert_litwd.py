@@ -56,7 +56,7 @@ def get_label(id: str) -> str:
 def get_name(id: str) -> Optional[str]:
     # print(id)
     attributes = wd_client.get(id).attributes
-    print(attributes)
+    # print(attributes)
     try:
         return attributes['labels']['en']['value']
     except KeyError:
