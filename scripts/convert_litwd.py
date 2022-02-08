@@ -55,7 +55,9 @@ def get_label(id: str) -> str:
 
 def get_name(id: str) -> str:
     # print(id)
-    return wd_client.get(id).attributes['labels']['en']['value']
+    attributes = wd_client.get(id).attributes
+    print(attributes)
+    return attributes['labels']['en']['value']
 
 
 def convert_lit_wd_1k() -> None:
