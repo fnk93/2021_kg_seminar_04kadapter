@@ -23,7 +23,7 @@ RUN pip install gdown
 RUN bash prep_dirs.sh
 RUN gdown https://drive.google.com/drive/folders/12mfLpYq4BTwdbLZnQsdwDJKubM9aOr9f -O /pretrained_models --folder
 
-RUN bash get_open_entity.sh
+# RUN bash get_open_entity.sh
 
 # RUN bash prep_litwd.sh
 

@@ -6,6 +6,7 @@
 /data/SearchQA
 /data/*/cached_train*
 /data/*/cached_test*
+/data/*/cached_dev*
 /pretrained_models
 /proc_data
 /pytorch_transformers/__pycache__
