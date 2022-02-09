@@ -1170,7 +1170,7 @@ GLUE_TASKS_NUM_LABELS = {
     "entity_type_kg": 9,
     "tacred": 42,
     "litwd": 280,
-    "fb15k": 0,
-    "wn18rr": 0,
+    "fb15k": 237,
+    "wn18rr": 11,
     "semeval": 19,
 }
