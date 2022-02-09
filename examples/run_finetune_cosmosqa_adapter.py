@@ -124,7 +124,7 @@ class InputFeatures(object):
 def read_examples_origin(input_file, is_training):
     cont = 0
     examples = []
-    with open(input_file) as f:
+    with open(input_file, encoding='utf-8') as f:
         for line in f:
             line = json.loads(line.strip())
 
