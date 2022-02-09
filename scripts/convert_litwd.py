@@ -5,7 +5,7 @@ from wikidata.client import Client
 # from Wikidata.client
 # from qwikidata
 
-CHECKPOINT_LINES = 100
+CHECKPOINT_LINES = 1000
 
 wd_client = Client()
 # print(test.get('Q20830929'))
@@ -47,8 +47,9 @@ with open(types_file, 'r', encoding='utf-8') as fr:
 
 cached_names = {}
 cached_names_file = BASE_PATH / 'cached_names.json'
-with open(cached_names_file, 'r', encoding='utf-8') as fr:
-    cached_names = json.load(fr)
+if cached_names_file.exists():
+    with open(cached_names_file, 'r', encoding='utf-8') as fr:
+        cached_names = json.load(fr)
 
 # print(labels)
 
@@ -126,30 +127,34 @@ def convert_data(path: pathlib.Path, file: str, new_file: Optional[str] = None) 
 
     with open(path / '{0}.txt'.format(file), 'r') as fr:
         lines = fr.readlines()
-        for index, line in enumerate(lines[start_from:]):
-            line_vals = line.strip().split('\t')
-            txt_val_1 = labels.get(line_vals[0], '')
-            txt_val_2 = labels.get(line_vals[2], '')
-            # print(types.get(line_vals[0], []))
-            labels_pre = [get_name(type_id) for type_id in types.get(line_vals[0], [])]
-            labels_list = [x for x in labels_pre if x is not None]
-            if len(labels_list) <= 0:
-                continue
-            result = {
-                'sent': '{0} {1} .'.format(
-                    txt_val_1,
-                    txt_val_2,
-                ),
-                'labels': labels_list,
-                'start': 0,
-                'end': len(txt_val_1),
-                'ents': [],
-            }
-            print(result)
-            all_lines.append(result)
-            if index % CHECKPOINT_LINES == 0:
-                with open(path / new_file_str, 'w+') as fw:
-                    json.dump(all_lines, fw)
+    for index, line in enumerate(lines[start_from:]):
+        print('Line {0}/{1}'.format(
+            start_from + index,
+            len(lines),
+        ))
+        line_vals = line.strip().split('\t')
+        txt_val_1 = labels.get(line_vals[0], '')
+        txt_val_2 = labels.get(line_vals[2], '')
+        # print(types.get(line_vals[0], []))
+        labels_pre = [get_name(type_id) for type_id in types.get(line_vals[0], [])]
+        labels_list = [x for x in labels_pre if x is not None]
+        if len(labels_list) <= 0:
+            continue
+        result = {
+            'sent': '{0} {1} .'.format(
+                txt_val_1,
+                txt_val_2,
+            ),
+            'labels': labels_list,
+            'start': 0,
+            'end': len(txt_val_1),
+            'ents': [],
+        }
+        # print(result)
+        all_lines.append(result)
+        if index % CHECKPOINT_LINES == 0:
+            with open(path / new_file_str, 'w+') as fw:
+                json.dump(all_lines, fw)
     with open(path / new_file_str, 'w+') as fw:
         json.dump(all_lines, fw)
 
@@ -159,8 +164,8 @@ def main() -> None:
         convert_lit_wd_1k()
         convert_lit_wd_19k()
         convert_lit_wd_48k()
-    except Exception:
-        pass
+    except Exception as exc:
+        print(exc)
     finally:
         save_cached_names()
     # pass
