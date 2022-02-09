@@ -45,22 +45,42 @@ with open(types_file, 'r', encoding='utf-8') as fr:
                 line_vals[0]: [line_vals[1]],
             })
 
+cached_names = {}
+cached_names_file = BASE_PATH / 'cached_names.json'
+with open(cached_names_file, 'r', encoding='utf-8') as fr:
+    cached_names = json.load(fr)
+
 # print(labels)
+
+
+def save_cached_names() -> None:
+    with open(cached_names_file, 'w+', encoding='utf-8') as fw:
+        json.dump(cached_names, fw)
 
 
 def get_label(id: str) -> str:
     # return wd_client.get(id).attributes['labels']['en']['value']
-    return wd_client.get(id).attributes['claims']['P31'][0]['mainsnak']['datavalue']['value']['id']
+    # if id in cached_names.keys():
+    #     return cached_names[id]
+    # else:
+    label = wd_client.get(id).attributes['claims']['P31'][0]['mainsnak']['datavalue']['value']['id']
+    # cached_names[id] = label
+    return label
 
 
 def get_name(id: str) -> Optional[str]:
     # print(id)
-    attributes = wd_client.get(id).attributes
-    # print(attributes)
-    try:
-        return attributes['labels']['en']['value']
-    except KeyError:
-        return None
+    if id in cached_names.keys():
+        return cached_names[id]
+    else:
+        attributes = wd_client.get(id).attributes
+        # print(attributes)
+        try:
+            label_name = attributes['labels']['en']['value']
+            cached_names[id] = label_name
+            return label_name
+        except KeyError:
+            return None
 
 
 def convert_lit_wd_1k() -> None:
@@ -135,9 +155,14 @@ def convert_data(path: pathlib.Path, file: str, new_file: Optional[str] = None) 
 
 
 def main() -> None:
-    convert_lit_wd_1k()
-    convert_lit_wd_19k()
-    convert_lit_wd_48k()
+    try:
+        convert_lit_wd_1k()
+        convert_lit_wd_19k()
+        convert_lit_wd_48k()
+    except Exception:
+        pass
+    finally:
+        save_cached_names()
     # pass
 
 
