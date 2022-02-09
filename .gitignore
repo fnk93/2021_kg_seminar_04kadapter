@@ -1,6 +1,7 @@
 .idea
 .cache
 /data/FB15K-237
+/data/FB15K-237rel
 /data/FIGER
 /data/Quasar-T
 /data/SearchQA
