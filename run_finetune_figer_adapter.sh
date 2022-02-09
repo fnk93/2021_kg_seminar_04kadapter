@@ -2,6 +2,10 @@
 # Licensed under the MIT license.
 
 task=entity_type
+seq_length=256
+batch_size=2048
+lr=5e-6
+warmup=1000
 python examples/run_finetune_figer_adapter.py \
     --model_type roberta \
     --model_name_or_path roberta-large \
@@ -13,16 +17,16 @@ python examples/run_finetune_figer_adapter.py \
     --data_dir=data/FIGER  \
     --output_dir=./proc_data \
     --comment 'figer-adapter' \
-    --max_seq_length=256  \
-    --per_gpu_eval_batch_size=4   \
-    --per_gpu_train_batch_size=4   \
-    --learning_rate=3e-5 \
+    --max_seq_length=$seq_length  \
+    --per_gpu_eval_batch_size=$batch_size   \
+    --per_gpu_train_batch_size=$batch_size   \
+    --learning_rate=$lr \
     --gradient_accumulation_steps=1 \
     --max_steps=-1  \
     --model_name=roberta-large  \
     --overwrite_output_dir   \
     --overwrite_cache \
-    --warmup_steps=120 \
+    --warmup_steps=$warmup \
     --save_steps=100 \
     --freeze_bert="" \
     --freeze_adapter="True" \
@@ -31,4 +35,5 @@ python examples/run_finetune_figer_adapter.py \
     --adapter_skip_layers 0 \
     --task_adapter '' \
     --meta_fac_adaptermodel="./pretrained_models/fac-adapter/pytorch_model.bin" \
-    --meta_lin_adaptermodel="./pretrained_models/lin-adapter/pytorch_model.bin"
+    --meta_lin_adaptermodel="./pretrained_models/lin-adapter/pytorch_model.bin" \
+    --restore
