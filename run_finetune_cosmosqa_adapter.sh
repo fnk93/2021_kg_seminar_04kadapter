@@ -11,13 +11,14 @@ seq_length=256
 fac_adap='./pretrained_models/fac-adapter/pytorch_model.bin'
 lin_adap='./pretrained_models/lin-adapter/pytorch_model.bin'
 comment='fl-adapter'
+dataset=data/cosmosQA
 CUDA_VISIBLE_DEVICES=$GPU python examples/run_finetune_cosmosqa_adapter.py \
 --model_type roberta-large \
 --model_name_or_path roberta-large \
 --do_train \
 --comment $comment \
 --do_eval \
---data_dir data/cosmosQA \
+--data_dir $dataset \
 --preprocess_type read_examples_origin \
 --output_dir ./proc_data/roberta_cosmosqa \
 --max_seq_length $seq_length \

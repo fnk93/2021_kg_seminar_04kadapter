@@ -26,6 +26,9 @@ batch_size=4
 fac_adap="./pretrained_models/fac-adapter/pytorch_model.bin"
 lin_adap="./pretrained_models/lin-adapter/pytorch_model.bin"
 comment='fl-adapter-trf'
+
+dataset=data/OpenEntity
+
 python examples/run_finetune_openentity_adapter.py \
     --model_type roberta \
     --model_name_or_path roberta-large \
@@ -33,7 +36,7 @@ python examples/run_finetune_openentity_adapter.py \
     --do_train  \
     --do_eval   \
     --task_name=$task     \
-    --data_dir=data/OpenEntity \
+    --data_dir=$dataset \
     --output_dir=./proc_data  \
     --comment $comment \
     --max_seq_length=$seq_length  \
