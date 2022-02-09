@@ -236,7 +236,7 @@ def convert_data(path: pathlib.Path, out_path: pathlib.Path, file: str, new_file
 def main() -> None:
     convert_wn18rr()
     with open(BASE_PATH / 'wn18rr-relations.json', 'w+', encoding='utf-8') as fw:
-        json.dump(all_relations, fw, ensure_ascii=False)
+        json.dump(list(all_relations), fw, ensure_ascii=False)
     # try:
     #     convert_lit_wd_1k()
     #     convert_lit_wd_19k()
