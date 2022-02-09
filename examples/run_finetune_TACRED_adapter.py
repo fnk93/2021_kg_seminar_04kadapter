@@ -764,7 +764,7 @@ def main():
                         help="The comment")
     parser.add_argument("--output_dir", default=None, type=str, required=True,
                         help="The output directory where the model predictions and checkpoints will be written.")
-    parser.add_argument("--restore", type=bool, default=True, help="Whether restore from the last checkpoint, is nochenckpoints, start from scartch")
+    # parser.add_argument("--restore", type=bool, default=True, help="Whether restore from the last checkpoint, is nochenckpoints, start from scartch")
 
     parser.add_argument("--freeze_bert", default=True, type=bool,
                         help="freeze the parameters of pretrained model.")
