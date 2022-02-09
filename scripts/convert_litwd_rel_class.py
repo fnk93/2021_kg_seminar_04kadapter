@@ -188,41 +188,28 @@ def convert_data(path: pathlib.Path, out_path: pathlib.Path, file: str, new_file
         if relation is None:
             relation = get_relation_name(line_vals[1])
         if relation is None:
-            relation = 'no relation'
+            relation = 'no_relation'
         result = {
-            'label': relation,
-            'text': '{0} {1} .'.format(
+            'token': [
                 txt_val_1,
                 txt_val_2,
-            ),
-            'ents': [
-                [
-                    txt_val_1,
-                    0,
-                    len(txt_val_1),
-                    0.5,
-                ],
-                [
-                    txt_val_2,
-                    len(txt_val_1) + 1,
-                    len(txt_val_1) + 1 + len(txt_val_2),
-                    0.5,
-                ],
+                '.',
             ],
-            'ann': [
-                [
-                    line_vals[0],
+            'h': {
+                'name': txt_val_1,
+                'pos': [
                     0,
-                    len(txt_val_1),
                     1,
                 ],
-                [
-                    line_vals[2],
-                    len(txt_val_1) + 1,
-                    len(txt_val_1) + 1 + len(txt_val_2),
+            },
+            't': {
+                'name': txt_val_2,
+                'pos': [
                     1,
+                    2,
                 ],
-            ],
+            },
+            'relation': relation,
         }
         # print(result)
         all_lines.append(result)
