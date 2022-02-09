@@ -5,12 +5,12 @@
 batch=64
 accu=8
 lr=1e-5
-GPU='0'
+GPU="0"
 warmup=0
 seq_length=256
-fac_adap='./pretrained_models/fac-adapter/pytorch_model.bin'
-lin_adap='./pretrained_models/lin-adapter/pytorch_model.bin'
-comment='fl-adapter'
+fac_adap="./pretrained_models/fac-adapter/pytorch_model.bin"
+lin_adap="./pretrained_models/lin-adapter/pytorch_model.bin"
+comment="fl-adapter"
 dataset=data/cosmosQA
 CUDA_VISIBLE_DEVICES=$GPU
 python examples/run_finetune_cosmosqa_adapter.py \
