@@ -56,7 +56,7 @@ if cached_names_file.exists():
 
 def save_cached_names() -> None:
     with open(cached_names_file, 'w+', encoding='utf-8') as fw:
-        json.dump(cached_names, fw)
+        json.dump(cached_names, fw, ensure_ascii=False)
 
 
 def get_label(id: str) -> str:
@@ -120,12 +120,12 @@ def convert_data(path: pathlib.Path, file: str, new_file: Optional[str] = None) 
 
     start_from = 0
     if (path / new_file_str).exists():
-        with open(path / new_file_str, 'r') as fr:
+        with open(path / new_file_str, 'r', encoding='utf-8') as fr:
             all_lines = json.load(fr)
             start_from = len(all_lines) + 1
     print('starting from line {0}'.format(start_from))
 
-    with open(path / '{0}.txt'.format(file), 'r') as fr:
+    with open(path / '{0}.txt'.format(file), 'r', encoding='utf-8') as fr:
         lines = fr.readlines()
     for index, line in enumerate(lines[start_from:]):
         print('Line {0}/{1}'.format(
@@ -153,10 +153,10 @@ def convert_data(path: pathlib.Path, file: str, new_file: Optional[str] = None) 
         # print(result)
         all_lines.append(result)
         if index % CHECKPOINT_LINES == 0:
-            with open(path / new_file_str, 'w+') as fw:
-                json.dump(all_lines, fw)
-    with open(path / new_file_str, 'w+') as fw:
-        json.dump(all_lines, fw)
+            with open(path / new_file_str, 'w+', encoding='utf-8') as fw:
+                json.dump(all_lines, fw, ensure_ascii=False)
+    with open(path / new_file_str, 'w+', encoding='utf-8') as fw:
+        json.dump(all_lines, fw, ensure_ascii=False)
 
 
 def main() -> None:

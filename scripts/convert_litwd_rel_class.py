@@ -1,7 +1,6 @@
 import json
 import pathlib
 from typing import Optional
-from attr import attributes
 from wikidata.client import Client
 # from Wikidata.client
 # from qwikidata
@@ -73,12 +72,12 @@ if cached_relations_file.exists():
 
 def save_cached_names() -> None:
     with open(cached_names_file, 'w+', encoding='utf-8') as fw:
-        json.dump(cached_names, fw)
+        json.dump(cached_names, fw, ensure_ascii=False)
 
 
 def save_cached_relations() -> None:
     with open(cached_relations_file, 'w+', encoding='utf-8') as fw:
-        json.dump(cached_relations, fw)
+        json.dump(cached_relations, fw, ensure_ascii=False)
 
 
 def get_label(id: str) -> str:
@@ -164,12 +163,12 @@ def convert_data(path: pathlib.Path, out_path: pathlib.Path, file: str, new_file
 
     start_from = 0
     if (out_path / new_file_str).exists():
-        with open(out_path / new_file_str, 'r') as fr:
+        with open(out_path / new_file_str, 'r', encoding='utf-8') as fr:
             all_lines = json.load(fr)
             start_from = len(all_lines) + 1
     print('starting from line {0}'.format(start_from))
 
-    with open(path / '{0}.txt'.format(file), 'r') as fr:
+    with open(path / '{0}.txt'.format(file), 'r', encoding='utf-8') as fr:
         lines = fr.readlines()
     for index, line in enumerate(lines[start_from:]):
         print('Line {0}/{1}'.format(
@@ -214,10 +213,10 @@ def convert_data(path: pathlib.Path, out_path: pathlib.Path, file: str, new_file
         # print(result)
         all_lines.append(result)
         if index % CHECKPOINT_LINES == 0:
-            with open(out_path / new_file_str, 'w+') as fw:
-                json.dump(all_lines, fw)
-    with open(out_path / new_file_str, 'w+') as fw:
-        json.dump(all_lines, fw)
+            with open(out_path / new_file_str, 'w+', encoding='utf-8') as fw:
+                json.dump(all_lines, fw, ensure_ascii=False)
+    with open(out_path / new_file_str, 'w+', encoding='utf-8') as fw:
+        json.dump(all_lines, fw, ensure_ascii=False)
 
 
 def main() -> None:

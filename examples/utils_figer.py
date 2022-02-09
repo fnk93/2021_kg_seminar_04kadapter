@@ -411,9 +411,13 @@ def compute_metrics(task_name, preds, labels):
 processors = {
     "entity_type": EntityTypeProcessor,
     'entity_type_kg': EntityTypeProcessor,
+    "entity_type_fb": EntityTypeProcessor,
+    "entity_type_wn": EntityTypeProcessor,
 }
 
 output_modes = {
     "entity_type": "classification",
-    'entity_type_kg': 'classification'
+    'entity_type_kg': 'classification',
+    "entity_type_fb": "classification",
+    "entity_type_wn": "classification",
 }

@@ -23,6 +23,7 @@ from __future__ import absolute_import, division, print_function
 import csv
 import logging
 import os
+import pathlib
 import sys
 from io import open
 import json
@@ -570,10 +571,29 @@ relations_litwd = [
 
 class LitWDProcessor(TACREDProcessor):
     def get_labels(self):
-        # TODO: set correct relations to return
         """See base class."""
         # return ["0", "1"]
-        return relations
+        return relations_litwd
+
+
+class FB15KProcessor(TACREDProcessor):
+    def get_labels(self):
+        """See base class."""
+        # return ["0", "1"]
+        relations_fb15k = []
+        with open(pathlib.Path('data/') / 'fb15k-relations.json', 'r') as fr:
+            relations_fb15k = json.load(fr)
+        return relations_fb15k
+
+
+class WN18RRProcessor(TACREDProcessor):
+    def get_labels(self):
+        """See base class."""
+        # return ["0", "1"]
+        relations_wn18rr = []
+        with open(pathlib.Path('data/') / 'wn18rr-relations.json', 'r') as fr:
+            relations_wn18rr = json.load(fr)
+        return relations_wn18rr
 
 
 semeval_relations = ['Cause-Effect(e1,e2)', 'Cause-Effect(e2,e1)',
@@ -1130,6 +1150,8 @@ processors = {
     "entity_type_kg": EntityTypeKGProcessor,
     "tacred": TACREDProcessor,
     "litwd": LitWDProcessor,
+    "fb15k": FB15KProcessor,
+    "wn18rr": WN18RRProcessor,
     "semeval": SemEvalProcessor,
 }
 
@@ -1138,6 +1160,8 @@ output_modes = {
     "entity_type_kg": "classification",
     "tacred": "classification",
     "litwd": "classification",
+    "fb15k": "classification",
+    "wn18rr": "classification",
     "semeval": "classification",
 }
 
@@ -1146,5 +1170,7 @@ GLUE_TASKS_NUM_LABELS = {
     "entity_type_kg": 9,
     "tacred": 42,
     "litwd": 280,
+    "fb15k": 0,
+    "wn18rr": 0,
     "semeval": 19,
 }
