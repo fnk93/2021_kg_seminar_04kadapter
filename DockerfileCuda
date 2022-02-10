@@ -11,6 +11,9 @@ RUN poetry export -f requirements.txt --output requirements.txt --without-hashes
 
 FROM nvidia/cuda:11.3.1-base-ubuntu20.04
 
+ENV TZ=Europe/Berlin
+RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
+
 RUN apt-get update && apt-get install -y \
     curl \
     ca-certificates \
@@ -18,14 +21,19 @@ RUN apt-get update && apt-get install -y \
     git \
     bzip2 \
     libx11-6 \
+    python3.9 \
+    python3-distutils \
+    python3-pip \
+    python3-apt \
  && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /code
 
 COPY --from=requirements-stage /tmp/requirements.txt /code/requirements.txt
 
-RUN python -m pip install --upgrade pip
+RUN python3 -m pip install --upgrade pip
 RUN pip install --no-cache-dir --upgrade -r /code/requirements.txt
+RUN pip3 install torch==1.10.2+cu113 torchvision==0.11.3+cu113 torchaudio==0.10.2+cu113 -f https://download.pytorch.org/whl/cu113/torch_stable.html
 RUN pip install gdown
 COPY data /code/data
 COPY examples /code/examples
