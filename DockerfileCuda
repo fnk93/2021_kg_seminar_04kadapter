@@ -31,9 +31,12 @@ WORKDIR /code
 
 COPY --from=requirements-stage /tmp/requirements.txt /code/requirements.txt
 
-RUN python3 -m pip install --upgrade pip
+RUN ln -sf /usr/bin/python3.9 /usr/bin/python & \
+    ln -sf /usr/bin/pip3 /usr/bin/pip
+
+RUN python -m pip install --upgrade pip
 RUN pip install --no-cache-dir --upgrade -r /code/requirements.txt
-RUN pip3 install torch==1.10.2+cu113 torchvision==0.11.3+cu113 torchaudio==0.10.2+cu113 -f https://download.pytorch.org/whl/cu113/torch_stable.html
+RUN pip install torch==1.10.2+cu113 torchvision==0.11.3+cu113 torchaudio==0.10.2+cu113 -f https://download.pytorch.org/whl/cu113/torch_stable.html
 RUN pip install gdown
 COPY data /code/data
 COPY examples /code/examples
@@ -46,6 +49,7 @@ COPY *.sh /code/
 RUN rm -rf /code/data/*/cached_test*
 RUN rm -rf /code/data/*/cached_train*
 RUN rm -rf /code/data/*/cached_dev*
+
 
 # Fac + Lin adapter
 # RUN bash ./prep_dirs.sh
