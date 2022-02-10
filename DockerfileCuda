@@ -1,0 +1,50 @@
+FROM python:3.9 as requirements-stage
+
+WORKDIR /tmp
+
+RUN python -m pip install --upgrade pip
+RUN pip install poetry
+
+COPY ./pyproject.toml ./poetry.lock* /tmp/
+
+RUN poetry export -f requirements.txt --output requirements.txt --without-hashes
+
+FROM nvidia/cuda:11.3.1-base-ubuntu20.04
+
+RUN apt-get update && apt-get install -y \
+    curl \
+    ca-certificates \
+    sudo \
+    git \
+    bzip2 \
+    libx11-6 \
+ && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /code
+
+COPY --from=requirements-stage /tmp/requirements.txt /code/requirements.txt
+
+RUN python -m pip install --upgrade pip
+RUN pip install --no-cache-dir --upgrade -r /code/requirements.txt
+RUN pip install gdown
+COPY data /code/data
+COPY examples /code/examples
+COPY pretrained_models /code/pretrained_models
+COPY pytorch_transformers /code/pytorch_transformers
+COPY scripts /code/scripts
+COPY *.py /code/
+COPY *.sh /code/
+
+RUN rm -rf /code/data/*/cached_test*
+RUN rm -rf /code/data/*/cached_train*
+RUN rm -rf /code/data/*/cached_dev*
+
+# Fac + Lin adapter
+# RUN bash ./prep_dirs.sh
+# RUN gdown https://drive.google.com/drive/folders/12mfLpYq4BTwdbLZnQsdwDJKubM9aOr9f -O /pretrained_models --folder
+
+# RUN bash get_open_entity.sh
+
+# RUN bash prep_litwd.sh
+
+# COPY . /code/
