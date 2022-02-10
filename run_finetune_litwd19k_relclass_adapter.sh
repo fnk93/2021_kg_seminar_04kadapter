@@ -53,7 +53,7 @@ CUDA_VISIBLE_DEVICES=$GPU python examples/run_finetune_TACRED_adapter.py \
     --overwrite_cache \
     --warmup_steps=$warmup \
     --negative_sample=45000 \
-    --save_steps=500 \
+    --save_steps=2000 \
     --freeze_bert="" \
     --freeze_adapter="True" \
     --adapter_size 768 \

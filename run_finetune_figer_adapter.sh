@@ -50,7 +50,7 @@ python examples/run_finetune_figer_adapter.py \
     --overwrite_output_dir   \
     --overwrite_cache \
     --warmup_steps=$warmup \
-    --save_steps=100 \
+    --save_steps=2000 \
     --freeze_bert="" \
     --freeze_adapter="True" \
     --adapter_size 768 \

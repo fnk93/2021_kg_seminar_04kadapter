@@ -29,6 +29,7 @@ python examples/run_finetune_cosmosqa_adapter.py \
     --warmup_steps $warmup \
     --per_gpu_eval_batch_size $batch \
     --learning_rate $lr \
+    --save_steps=2000 \
     --adam_epsilon 1e-6 \
     --weight_decay 0 \
     --train_steps 20000 \
