@@ -1,0 +1,26 @@
+# Expecting base image to be the Deep Learning Container image built by ../cu113/Dockerfile.e3.gpu
+ARG BASE_IMAGE="dockerfile.sagemaker.gpu"
+
+FROM $BASE_IMAGE
+
+WORKDIR /code
+
+RUN pip install --no-cache-dir --upgrade -r requirements.txt
+RUN pip install torch==1.10.2+cu113 torchvision==0.11.3+cu113 torchaudio==0.10.2+cu113 -f https://download.pytorch.org/whl/cu113/torch_stable.html
+RUN pip install gdown
+COPY data /code/data
+COPY examples /code/examples
+COPY pretrained_models /code/pretrained_models
+COPY pytorch_transformers /code/pytorch_transformers
+COPY scripts /code/scripts
+COPY *.py /code/
+COPY *.sh /code/
+
+RUN rm -rf /code/data/*/cached_test*
+RUN rm -rf /code/data/*/cached_train*
+RUN rm -rf /code/data/*/cached_dev*
+
+# Add any script or repo as required
+# COPY mnist.py /var/mnist.py
+
+# ENTRYPOINT ["python", "/var/mnist.py"]
