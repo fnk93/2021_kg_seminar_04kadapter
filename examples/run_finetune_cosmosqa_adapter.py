@@ -680,6 +680,11 @@ def main():
                         help="")
     parser.add_argument("--warmup_steps", default=0, type=int,
                         help="Linear warmup over warmup_steps.")
+    # No information given on these
+    parser.add_argument("--a_rate", default=1, type=int,
+                        help="")
+    parser.add_argument("--b_rate", default=1, type=int,
+                        help="")
 
 
     parser.add_argument('--logging_steps', type=int, default=10,
