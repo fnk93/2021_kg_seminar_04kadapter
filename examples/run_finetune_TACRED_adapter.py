@@ -59,6 +59,8 @@ from pytorch_transformers import AdamW, WarmupLinearSchedule
 from utils_glue import (compute_metrics, convert_examples_to_features_tacred,
                         output_modes, processors)
 import time
+import s3fs
+s3 = s3fs.S3FileSystem(anon=False)
 logger = logging.getLogger(__name__)
 
 ALL_MODELS = sum((tuple(conf.pretrained_config_archive_map.keys()) for conf in (BertConfig, XLNetConfig, XLMConfig, RobertaConfig)), ())
@@ -415,6 +417,24 @@ def evaluate(args, model, tokenizer, prefix=""):
                 for line in save_results:
                     result_file.write(str(line) + '\n')
                 result_file.close()
+            model_type = 'Unkn'
+            if args.meta_fac_adaptermodel and args.meta_lin_adaptermodel:
+                model_type = 'F+L'
+            elif args.meta_fac_adaptermodel:
+                model_type = 'F'
+            elif args.meta_lin_adaptermodel:
+                model_type = 'L'
+            dataset = args.data_dir.split('/')[-1]
+            s3.put(os.path.join(args.output_dir, args.my_model_name + '_result.txt'), 's3://kadapter/results/{0}/{1}/{7}_results-s-{2}-lr-{3}-w-{4}-b-{5}-e-{6}.txt'.format(
+                model_type,
+                dataset,
+                args.max_seq_length,
+                args.learning_rate,
+                args.warmup_steps,
+                args.per_gpu_train_batch_size,
+                args.num_train_epochs,
+                args.my_model_name,
+            ))
     return results
 
 # TODO: datasets.load_dataset('xiaobendanyn/tacred')
