@@ -28,11 +28,14 @@ from io import open
 import json
 from collections import Counter
 
+import s3fs
+
 from scipy.stats import pearsonr, spearmanr
 from sklearn.metrics import matthews_corrcoef, f1_score
 import numpy as np
 
 logger = logging.getLogger(__name__)
+s3 = s3fs.S3FileSystem(anon=False)
 
 
 class InputExample(object):
@@ -109,32 +112,59 @@ class DataProcessor(object):
     @classmethod
     def _read_tsv(cls, input_file, quotechar=None):
         """Reads a tab separated value file."""
-        with open(input_file, "r", encoding="utf-8-sig") as f:
-            reader = csv.reader(f, delimiter="\t", quotechar=quotechar)
-            lines = []
-            for line in reader:
-                if sys.version_info[0] == 2:
-                    line = list(unicode(cell, 'utf-8') for cell in line)
-                lines.append(line)
-            return lines
+        try:
+            with open(input_file, "r", encoding="utf-8-sig") as f:
+                reader = csv.reader(f, delimiter="\t", quotechar=quotechar)
+                lines = []
+                for line in reader:
+                    if sys.version_info[0] == 2:
+                        line = list(unicode(cell, 'utf-8') for cell in line)
+                    lines.append(line)
+                return lines
+        except:
+            with s3.open(input_file, 'r', encoding='utf-8-sig') as fr:
+                reader = csv.reader(fr, delimiter="\t", quotechar=quotechar)
+                lines = []
+                for line in reader:
+                    if sys.version_info[0] == 2:
+                        line = list(unicode(cell, 'utf-8') for cell in line)
+                    lines.append(line)
+                return lines
 
     @classmethod
     def _read_json(cls, input_file):
-        with open(input_file, 'r', encoding='utf8') as f:
-            return json.load(f)
+        try:
+            with open(input_file, 'r', encoding='utf8') as f:
+                return json.load(f)
+        except:
+            with s3.open(input_file, 'r', encoding='utf8') as fr:
+                return json.load(fr)
 
     @classmethod
     def _read_semeval_txt(clas, input_file):
-        with open(input_file, 'r', encoding='utf8') as f:
-            examples = []
-            example = []
-            for line in f:
-                if line.strip() == '':
-                    examples.append(example)
-                    example = []
-                else:
-                    example.append(line.strip())
-            return examples
+        try:
+            with open(input_file, 'r', encoding='utf8') as f:
+                examples = []
+                example = []
+                for line in f:
+                    if line.strip() == '':
+                        examples.append(example)
+                        example = []
+                    else:
+                        example.append(line.strip())
+                return examples
+        except:
+            with s3.open(input_file, 'r', encoding='utf8') as f:
+                examples = []
+                example = []
+                for line in f:
+                    if line.strip() == '':
+                        examples.append(example)
+                        example = []
+                    else:
+                        example.append(line.strip())
+                return examples
+
 
 
 
