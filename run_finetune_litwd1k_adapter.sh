@@ -41,7 +41,7 @@ python examples/run_finetune_litWik_adapter.py \
     --max_seq_length=$seq_length  \
     --per_gpu_eval_batch_size=$batch_size   \
     --per_gpu_train_batch_size=$batch_size   \
-    --learning_rate=$learning \
+    --learning_rate=$lr \
     --gradient_accumulation_steps=1 \
     --max_steps=-1  \
     --model_name=roberta-large  \
