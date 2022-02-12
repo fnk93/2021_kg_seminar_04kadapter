@@ -3,6 +3,7 @@
 
 # best results for F + L
 batch=64
+batch=16
 accu=8
 lr=1e-5
 GPU="0"
