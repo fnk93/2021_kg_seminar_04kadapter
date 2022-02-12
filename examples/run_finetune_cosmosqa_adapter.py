@@ -26,6 +26,7 @@ import logging
 import os
 import random
 
+import s3fs
 import numpy as np
 import torch
 import torch.nn as nn
@@ -61,6 +62,7 @@ MODEL_CLASSES = {
 ALL_MODELS = sum((tuple(conf.pretrained_config_archive_map.keys()) for conf in (RobertaConfig,)), ())
 
 logger = logging.getLogger(__name__)
+s3 = s3fs.S3FileSystem(anon=False)
 
 
 class Example(object):
@@ -1153,6 +1155,26 @@ def main():
                             writer.write("%s = %s\n" % (key, str(result[key])))
                         writer.write('*' * 80)
                         writer.write('\n')
+                    result_data = ''
+                    # with open(output_eval_file, 'r', encoding='utf8') as fr:
+                    #     result_data = fr.read()
+                    model_type = 'Unkn'
+                    if args.meta_fac_adaptermodel and args.meta_lin_adaptermodel:
+                        model_type = 'F+L'
+                    elif args.meta_fac_adaptermodel:
+                        model_type = 'F'
+                    elif args.meta_lin_adaptermodel:
+                        model_type = 'L'
+                    dataset = args.data_dir.split('/')[-1]
+                    s3.put(output_eval_file, 's3://kadapter/results/{0}/{1}/eval_results-s-{2}-lr-{3}-w-{4}-b-{5}-e-{6}.txt'.format(
+                        model_type,
+                        dataset,
+                        args.max_seq_length,
+                        args.learning_rate,
+                        args.warmup_steps,
+                        args.per_gpu_train_batch_size,
+                        args.num_train_epochs,
+                    ))
 
                     # for key, value in result.items():
                     #     tb_writer.add_scalar('eval_{}'.format(key), value, global_step)
