@@ -510,7 +510,7 @@ relations_litwd = [
     'relegated',
     'domain of saint or deity',
     'language used',
-    'backu'or reserve team or crew',
+    'backup or reserve team or crew',
     'located in protected area',
     'qualifies for event',
     'film crew member',
