@@ -122,7 +122,7 @@ class DataProcessor(object):
                     lines.append(line)
                 return lines
         except:
-            with s3.open(input_file, 'r', encoding='utf-8-sig') as fr:
+            with s3.open('kadapter/' + input_file, 'r', encoding='utf-8-sig') as fr:
                 reader = csv.reader(fr, delimiter="\t", quotechar=quotechar)
                 lines = []
                 for line in reader:
@@ -137,7 +137,7 @@ class DataProcessor(object):
             with open(input_file, 'r', encoding='utf8') as f:
                 return json.load(f)
         except:
-            with s3.open(input_file, 'r', encoding='utf8') as fr:
+            with s3.open('kadapter/' + input_file, 'r', encoding='utf8') as fr:
                 return json.load(fr)
 
     @classmethod
@@ -154,7 +154,7 @@ class DataProcessor(object):
                         example.append(line.strip())
                 return examples
         except:
-            with s3.open(input_file, 'r', encoding='utf8') as f:
+            with s3.open('kadapter/' + input_file, 'r', encoding='utf8') as f:
                 examples = []
                 example = []
                 for line in f:
