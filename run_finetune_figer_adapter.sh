@@ -21,6 +21,7 @@ task=entity_type
 # best results on F + L
 seq_length=256
 batch_size=2048
+batch_size=4
 lr=5e-6
 warmup=1000
 fac_adap='./pretrained_models/fac-adapter/pytorch_model.bin'
