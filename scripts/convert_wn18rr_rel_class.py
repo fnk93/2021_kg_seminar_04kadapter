@@ -207,6 +207,10 @@ def convert_data(path: pathlib.Path, out_path: pathlib.Path, file: str, new_file
                 line_vals[2],
                 '.',
             ],
+            'subj_start': 0,
+            'subj_end': 0,
+            'obj_start': 1,
+            'obj_end': 1,
             'h': {
                 'name': line_vals[0],
                 'pos': [

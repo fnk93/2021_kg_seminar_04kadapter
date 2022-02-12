@@ -188,12 +188,16 @@ def convert_data(path: pathlib.Path, out_path: pathlib.Path, file: str, new_file
             relation = get_relation_name(line_vals[1])
         if relation is None:
             relation = 'no_relation'
+        
+        token_ = txt_val_1.split(' ') + txt_val_2.split(' ') + [
+            '.',
+        ]
         result = {
-            'token': [
-                txt_val_1,
-                txt_val_2,
-                '.',
-            ],
+            'token': token_,
+            'subj_start': token_.index(txt_val_1.split(' ')[0]),
+            'subj_end': token_.index(txt_val_1.split(' ')[-1]),
+            'obj_start': token_.index(txt_val_2.split(' ')[0]),
+            'obj_end': token_.index(txt_val_2.split(' ')[-1]),
             'h': {
                 'name': txt_val_1,
                 'pos': [

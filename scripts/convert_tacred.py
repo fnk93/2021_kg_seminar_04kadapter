@@ -157,13 +157,13 @@ BASE_PATH = pathlib.Path('data')
 all_relations = set()
 
 
-def convert_fb15k() -> None:
-    in_path = pathlib.Path('data/FB15K-237')
-    out_path = pathlib.Path('data/FB15K-237rel')
+def convert_tacred() -> None:
+    in_path = pathlib.Path('data/TACRED')
+    out_path = pathlib.Path('data/TACRED')
     if not out_path.exists():
         out_path.mkdir()
     convert_data(path=in_path, out_path=out_path, file='test')
-    convert_data(path=in_path, out_path=out_path, file='valid', new_file='dev')
+    convert_data(path=in_path, out_path=out_path, file='dev', new_file='dev')
     convert_data(path=in_path, out_path=out_path, file='train')
 
 
@@ -175,20 +175,20 @@ def convert_data(path: pathlib.Path, out_path: pathlib.Path, file: str, new_file
         new_file_str = '{0}.json'.format(file)
 
     start_from = 0
-    if (out_path / new_file_str).exists():
-        with open(out_path / new_file_str, 'r', encoding='utf-8') as fr:
-            all_lines = json.load(fr)
-            start_from = len(all_lines) + 1
-    print('starting from line {0}'.format(start_from))
+    # if (out_path / new_file_str).exists():
+    #     with open(out_path / new_file_str, 'r', encoding='utf-8') as fr:
+    #         all_lines = json.load(fr)
+    #         start_from = len(all_lines) + 1
+    # print('starting from line {0}'.format(start_from))
 
-    with open(path / '{0}.txt'.format(file), 'r', encoding='utf-8') as fr:
-        lines = fr.readlines()
+    with open(path / '{0}.json'.format(file), 'r', encoding='utf-8') as fr:
+        lines = json.load(fr)
     for index, line in enumerate(lines[start_from:]):
         print('Line {0}/{1}'.format(
             start_from + index,
             len(lines),
         ))
-        line_vals = line.strip().split('\t')
+        # line_vals = line.strip().split('\t')
         # txt_val_1 = labels.get(line_vals[0], '')
         # txt_val_2 = labels.get(line_vals[2], '')
         # print(types.get(line_vals[0], []))
@@ -201,34 +201,19 @@ def convert_data(path: pathlib.Path, out_path: pathlib.Path, file: str, new_file
         #     relation = get_relation_name(line_vals[1])
         # if relation is None:
         #     relation = 'no_relation'
+        subject = line['ents'][0][0]
+        object_ = line['ents'][1][0]
+        token_ = line['text'].split(' ')
         result = {
-            'token': [
-                line_vals[0],
-                line_vals[2],
-                '.',
-            ],
-            'subj_start': 0,
-            'subj_end': 0,
-            'obj_start': 1,
-            'obj_end': 1,
-            'h': {
-                'name': line_vals[0],
-                'pos': [
-                    0,
-                    1,
-                ],
-            },
-            't': {
-                'name': line_vals[2],
-                'pos': [
-                    1,
-                    2,
-                ],
-            },
-            'relation': line_vals[1],
+            'token': token_,
+            'subj_start': token_.index(subject.split(' ')[0]),
+            'subj_end': token_.index(subject.split(' ')[-1]),
+            'obj_start': token_.index(object_.split(' ')[0]),
+            'obj_end': token_.index(object_.split(' ')[-1]),
+            'relation': line['label'],
         }
         # print(result)
-        all_relations.add(line_vals[1])
+        # all_relations.add(line_vals[1])
         all_lines.append(result)
         if index % CHECKPOINT_LINES == 0:
             with open(out_path / new_file_str, 'w+', encoding='utf-8') as fw:
@@ -238,9 +223,9 @@ def convert_data(path: pathlib.Path, out_path: pathlib.Path, file: str, new_file
 
 
 def main() -> None:
-    convert_fb15k()
-    with open(BASE_PATH / 'fb15k-relations.json', 'w+', encoding='utf-8') as fw:
-        json.dump(list(all_relations), fw, ensure_ascii=False)
+    convert_tacred()
+    # with open(BASE_PATH / 'fb15k-relations.json', 'w+', encoding='utf-8') as fw:
+    #     json.dump(list(all_relations), fw, ensure_ascii=False)
     # try:
     #     convert_lit_wd_1k()
     #     convert_lit_wd_19k()
