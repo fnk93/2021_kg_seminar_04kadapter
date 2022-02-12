@@ -22,12 +22,12 @@ task=entity_type_kg
 seq_length=256
 batch_size=2048
 batch_size=16
-batch_size=4
 lr=5e-6
 warmup=1000
 fac_adap='./pretrained_models/fac-adapter/pytorch_model.bin'
 lin_adap='./pretrained_models/lin-adapter/pytorch_model.bin'
 comment='fl-litwd1k-adapter'
+batch_size=4
 dataset=data/LitWD1K
 python examples/run_finetune_litWik_adapter.py \
     --model_type roberta \
