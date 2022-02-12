@@ -1186,7 +1186,7 @@ def compute_metrics(task_name, preds, labels):
     assert len(preds) == len(labels)
     if task_name == 'entity_type':
         return entity_typing_accuracy(preds, labels)
-    elif task_name == 'tacred':
+    elif task_name in ['tacred', 'litwd', 'fb15k', 'wn18rr']:
         return micro_f1_tacred(preds, labels)
     elif task_name == 'semeval':
         return macro_f1_semeval(preds, labels)
