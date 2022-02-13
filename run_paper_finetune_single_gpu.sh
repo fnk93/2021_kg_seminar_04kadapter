@@ -41,7 +41,9 @@ python examples/run_finetune_cosmosqa_adapter.py \
     --adapter_list "0,11,22" \
     --adapter_skip_layers 0 \
     --meta_fac_adaptermodel=$fac_adap \
-    --meta_lin_adaptermodel=$lin_adap
+    --meta_lin_adaptermodel=$lin_adap \
+    --save_to_s3 \
+    --read_from_s3
 
 # Copyright (c) Microsoft Corporation.
 # Licensed under the MIT license.
@@ -105,6 +107,8 @@ python examples/run_finetune_figer_adapter.py \
     --task_adapter '' \
     --meta_fac_adaptermodel=$fac_adap \
     --meta_lin_adaptermodel=$lin_adap \
+    --save_to_s3 \
+    --read_from_s3
 
 # Copyright (c) Microsoft Corporation.
 # Licensed under the MIT license.
@@ -168,6 +172,8 @@ python examples/run_finetune_figer_adapter.py \
     --task_adapter '' \
     --meta_fac_adaptermodel=$fac_adap \
     --meta_lin_adaptermodel=$lin_adap \
+    --save_to_s3 \
+    --read_from_s3
 
 # Copyright (c) Microsoft Corporation.
 # Licensed under the MIT license.
@@ -231,6 +237,8 @@ python examples/run_finetune_figer_adapter.py \
     --task_adapter '' \
     --meta_fac_adaptermodel=$fac_adap \
     --meta_lin_adaptermodel=$lin_adap \
+    --save_to_s3 \
+    --read_from_s3
 
 # Copyright (c) Microsoft Corporation.
 # Licensed under the MIT license.
@@ -290,7 +298,9 @@ python examples/run_finetune_openentity_adapter.py \
     --adapter_list "0,11,22" \
     --adapter_skip_layers 0 \
     --meta_fac_adaptermodel=$fac_adap \
-    --meta_lin_adaptermodel=$lin_adap
+    --meta_lin_adaptermodel=$lin_adap \
+    --save_to_s3 \
+    --read_from_s3
 
 # Copyright (c) Microsoft Corporation.
 # Licensed under the MIT license.
@@ -350,7 +360,9 @@ python examples/run_finetune_openentity_adapter.py \
     --adapter_list "0,11,22" \
     --adapter_skip_layers 0 \
     --meta_fac_adaptermodel=$fac_adap \
-    --meta_lin_adaptermodel=$lin_adap
+    --meta_lin_adaptermodel=$lin_adap \
+    --save_to_s3 \
+    --read_from_s3
 
 # Copyright (c) Microsoft Corporation.
 # Licensed under the MIT license.
@@ -410,7 +422,9 @@ python examples/run_finetune_openentity_adapter.py \
     --adapter_list "0,11,22" \
     --adapter_skip_layers 0 \
     --meta_fac_adaptermodel=$fac_adap \
-    --meta_lin_adaptermodel=$lin_adap
+    --meta_lin_adaptermodel=$lin_adap \
+    --save_to_s3 \
+    --read_from_s3
 
 # Copyright (c) Microsoft Corporation.
 # Licensed under the MIT license.
@@ -475,7 +489,9 @@ CUDA_VISIBLE_DEVICES=$GPU python examples/run_finetune_TACRED_adapter.py \
     --adapter_list "0,11,22" \
     --adapter_skip_layers 0 \
     --meta_fac_adaptermodel=$fac_adap \
-    --meta_lin_adaptermodel=$lin_adap
+    --meta_lin_adaptermodel=$lin_adap \
+    --save_to_s3 \
+    --read_from_s3
 
 # Copyright (c) Microsoft Corporation.
 # Licensed under the MIT license.
@@ -540,7 +556,9 @@ CUDA_VISIBLE_DEVICES=$GPU python examples/run_finetune_TACRED_adapter.py \
     --adapter_list "0,11,22" \
     --adapter_skip_layers 0 \
     --meta_fac_adaptermodel=$fac_adap \
-    --meta_lin_adaptermodel=$lin_adap
+    --meta_lin_adaptermodel=$lin_adap \
+    --save_to_s3 \
+    --read_from_s3
 
 # Copyright (c) Microsoft Corporation.
 # Licensed under the MIT license.
@@ -605,4 +623,6 @@ CUDA_VISIBLE_DEVICES=$GPU python examples/run_finetune_TACRED_adapter.py \
     --adapter_list "0,11,22" \
     --adapter_skip_layers 0 \
     --meta_fac_adaptermodel=$fac_adap \
-    --meta_lin_adaptermodel=$lin_adap
+    --meta_lin_adaptermodel=$lin_adap \
+    --save_to_s3 \
+    --read_from_s3

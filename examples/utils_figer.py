@@ -110,7 +110,7 @@ class DataProcessor(object):
         raise NotImplementedError()
 
     @classmethod
-    def _read_tsv(cls, input_file, quotechar=None):
+    def _read_tsv(cls, input_file, quotechar=None, read_from_s3: bool = False):
         """Reads a tab separated value file."""
         try:
             with open(input_file, "r", encoding="utf-8-sig") as f:
@@ -121,27 +121,33 @@ class DataProcessor(object):
                         line = list(unicode(cell, 'utf-8') for cell in line)
                     lines.append(line)
                 return lines
-        except:
-            with s3.open('kadapter/' + input_file, 'r', encoding='utf-8-sig') as fr:
-                reader = csv.reader(fr, delimiter="\t", quotechar=quotechar)
-                lines = []
-                for line in reader:
-                    if sys.version_info[0] == 2:
-                        line = list(unicode(cell, 'utf-8') for cell in line)
-                    lines.append(line)
-                return lines
+        except Exception as exc:
+            if read_from_s3:
+                with s3.open('kadapter/' + input_file, 'r', encoding='utf-8-sig') as fr:
+                    reader = csv.reader(fr, delimiter="\t", quotechar=quotechar)
+                    lines = []
+                    for line in reader:
+                        if sys.version_info[0] == 2:
+                            line = list(unicode(cell, 'utf-8') for cell in line)
+                        lines.append(line)
+                    return lines
+            else:
+                raise exc
 
     @classmethod
-    def _read_json(cls, input_file):
+    def _read_json(cls, input_file, read_from_s3: bool = False):
         try:
             with open(input_file, 'r', encoding='utf8') as f:
                 return json.load(f)
-        except:
-            with s3.open('kadapter/' + input_file, 'r', encoding='utf8') as fr:
-                return json.load(fr)
+        except Exception as exc:
+            if read_from_s3:
+                with s3.open('kadapter/' + input_file, 'r', encoding='utf8') as fr:
+                    return json.load(fr)
+            else:
+                raise exc
 
     @classmethod
-    def _read_semeval_txt(clas, input_file):
+    def _read_semeval_txt(clas, input_file, read_from_s3: bool = False):
         try:
             with open(input_file, 'r', encoding='utf8') as f:
                 examples = []
@@ -153,34 +159,37 @@ class DataProcessor(object):
                     else:
                         example.append(line.strip())
                 return examples
-        except:
-            with s3.open('kadapter/' + input_file, 'r', encoding='utf8') as f:
-                examples = []
-                example = []
-                for line in f:
-                    if line.strip() == '':
-                        examples.append(example)
-                        example = []
-                    else:
-                        example.append(line.strip())
-                return examples
+        except Exception as exc:
+            if read_from_s3:
+                with s3.open('kadapter/' + input_file, 'r', encoding='utf8') as f:
+                    examples = []
+                    example = []
+                    for line in f:
+                        if line.strip() == '':
+                            examples.append(example)
+                            example = []
+                        else:
+                            example.append(line.strip())
+                    return examples
+            else:
+                raise exc
 
 
 
 
 class EntityTypeProcessor(DataProcessor):
     """Processor for the MRPC data set (GLUE version)."""
-    def get_train_examples(self, data_dir, dataset_type):
+    def get_train_examples(self, data_dir, dataset_type, read_from_s3: bool = False):
         """See base class."""
         logger.info("LOOKING AT {}".format(os.path.join(data_dir, "{}.json".format(dataset_type))))
         examples = self._create_examples(
-            self._read_json(os.path.join(data_dir, "{}.json".format(dataset_type))), dataset_type)
+            self._read_json(os.path.join(data_dir, "{}.json".format(dataset_type)), read_from_s3), dataset_type)
         return examples
 
-    def get_dev_examples(self, data_dir, dataset_type):
+    def get_dev_examples(self, data_dir, dataset_type, read_from_s3: bool = False):
         """See base class."""
         return self._create_examples(
-            self._read_json(os.path.join(data_dir, "{}.json".format(dataset_type))), dataset_type)
+            self._read_json(os.path.join(data_dir, "{}.json".format(dataset_type)), read_from_s3), dataset_type)
 
     def get_labels(self):
         """See base class."""

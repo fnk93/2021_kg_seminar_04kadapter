@@ -62,7 +62,6 @@ MODEL_CLASSES = {
 ALL_MODELS = sum((tuple(conf.pretrained_config_archive_map.keys()) for conf in (RobertaConfig,)), ())
 
 logger = logging.getLogger(__name__)
-s3 = s3fs.S3FileSystem(anon=False)
 
 
 class Example(object):
@@ -625,6 +624,8 @@ def main():
                         help="The skip_layers of adapter according to bert layers")
 
     parser.add_argument("--restore", action='store_true', default=False, help="Whether restore from the last checkpoint, is nochenckpoints, start from scartch")
+    parser.add_argument("--save_to_s3", action='store_true', default=False, help="Whether to save results to s3://kadapter bucket")
+    parser.add_argument("--read_from_s3", action='store_true', default=False, help="Whether to read dataset from s3://kadapter bucket")
     parser.add_argument("--directml", action='store_true', default=False, help="Whether to use DirectML or not")
 
     parser.add_argument('--meta_fac_adaptermodel', default='',type=str, help='the pretrained factual adapter model')
@@ -723,6 +724,8 @@ def main():
     name_prefix = 'batch-'+str(args.per_gpu_train_batch_size)+'_'+'lr-'+str(args.learning_rate)+'_'+'warmup-'+str(args.warmup_steps)+'_'+'epoch-'+str(args.num_train_epochs)+'_'+str(args.comment)
     args.my_model_name = args.task_name+'_'+name_prefix
     args.output_dir = os.path.join(args.output_dir, args.my_model_name)
+    if args.save_to_s3:
+        s3 = s3fs.S3FileSystem(anon=False)
 
     # if os.path.exists(args.output_dir) and os.listdir(args.output_dir) and args.do_train and not args.overwrite_output_dir:
     #     raise ValueError("Output directory ({}) already exists and is not empty. Use --overwrite_output_dir to overcome.".format(args.output_dir))
@@ -1166,15 +1169,16 @@ def main():
                     elif args.meta_lin_adaptermodel:
                         model_type = 'L'
                     dataset = args.data_dir.split('/')[-1]
-                    s3.put(output_eval_file, 's3://kadapter/results/{0}/{1}/eval_results-s-{2}-lr-{3}-w-{4}-b-{5}-e-{6}.txt'.format(
-                        model_type,
-                        dataset,
-                        args.max_seq_length,
-                        args.learning_rate,
-                        args.warmup_steps,
-                        args.per_gpu_train_batch_size,
-                        args.num_train_epochs,
-                    ))
+                    if args.save_to_s3:
+                        s3.put(output_eval_file, 's3://kadapter/results/{0}/{1}/eval_results-s-{2}-lr-{3}-w-{4}-b-{5}-e-{6}.txt'.format(
+                            model_type,
+                            dataset,
+                            args.max_seq_length,
+                            args.learning_rate,
+                            args.warmup_steps,
+                            args.per_gpu_train_batch_size,
+                            args.num_train_epochs,
+                        ))
 
                     # for key, value in result.items():
                     #     tb_writer.add_scalar('eval_{}'.format(key), value, global_step)

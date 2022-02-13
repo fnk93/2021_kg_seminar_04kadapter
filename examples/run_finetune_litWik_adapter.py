@@ -62,7 +62,7 @@ from utils_figer import (compute_metrics, convert_examples_to_features_entity_ty
 logger = logging.getLogger(__name__)
 import s3fs
 
-s3 = s3fs.S3FileSystem(anon=False)
+# s3 = s3fs.S3FileSystem(anon=False)
 
 ALL_MODELS = sum((tuple(conf.pretrained_config_archive_map.keys()) for conf in (BertConfig, XLNetConfig, XLMConfig, RobertaConfig)), ())
 
@@ -325,6 +325,8 @@ def evaluate(args, model, tokenizer, prefix=""):
     eval_outputs_dirs = (args.output_dir, args.output_dir + '-MM') if args.task_name == "mnli" else (args.output_dir,)
 
     results = {}
+    if args.save_to_s3:
+        s3 = s3fs.S3FileSystem(anon=False)
     for dataset_type in ['test']:
 
         for eval_task, eval_output_dir in zip(eval_task_names, eval_outputs_dirs):
@@ -465,16 +467,17 @@ def evaluate(args, model, tokenizer, prefix=""):
             elif args.meta_lin_adaptermodel:
                 model_type = 'L'
             dataset = args.data_dir.split('/')[-1]
-            s3.put(os.path.join(args.output_dir, args.my_model_name + '_result.txt'), 's3://kadapter/results/{0}/{1}/{7}_results-s-{2}-lr-{3}-w-{4}-b-{5}-e-{6}.txt'.format(
-                model_type,
-                dataset,
-                args.max_seq_length,
-                args.learning_rate,
-                args.warmup_steps,
-                args.per_gpu_train_batch_size,
-                args.num_train_epochs,
-                args.my_model_name,
-            ))
+            if args.save_to_s3:
+                s3.put(os.path.join(args.output_dir, args.my_model_name + '_result.txt'), 's3://kadapter/results/{0}/{1}/{7}_results-s-{2}-lr-{3}-w-{4}-b-{5}-e-{6}.txt'.format(
+                    model_type,
+                    dataset,
+                    args.max_seq_length,
+                    args.learning_rate,
+                    args.warmup_steps,
+                    args.per_gpu_train_batch_size,
+                    args.num_train_epochs,
+                    args.my_model_name,
+                ))
     return results
 
 def load_and_cache_examples(args, task, tokenizer, dataset_type, evaluate=False):
@@ -495,7 +498,7 @@ def load_and_cache_examples(args, task, tokenizer, dataset_type, evaluate=False)
         features = torch.load(cached_features_file)
     else:
         logger.info("Creating features from dataset file at %s", args.data_dir)
-        examples = processor.get_dev_examples(args.data_dir, dataset_type) if evaluate else processor.get_train_examples(args.data_dir, dataset_type)
+        examples = processor.get_dev_examples(args.data_dir, dataset_type, args.load_from_s3) if evaluate else processor.get_train_examples(args.data_dir, dataset_type, args.load_from_s3)
 
         features = convert_examples_to_features_entity_typing(examples, args.label_list, args.max_seq_length, tokenizer, output_mode,
             cls_token_at_end=bool(args.model_type in ['xlnet']),            # xlnet has a cls token at the end
@@ -847,6 +850,8 @@ def main():
 
     parser.add_argument("--restore", action='store_true', default=False, help="Whether restore from the last checkpoint, is nochenckpoints, start from scartch")
     parser.add_argument("--directml", action='store_true', default=False, help="Whether to use DirectML or not")
+    parser.add_argument("--save_to_s3", action='store_true', default=False, help="Whether to save results to s3://kadapter bucket")
+    parser.add_argument("--read_from_s3", action='store_true', default=False, help="Whether to read dataset from s3://kadapter bucket")
 
     parser.add_argument("--per_gpu_train_batch_size", default=8, type=int,
                         help="Batch size per GPU/CPU for training.")

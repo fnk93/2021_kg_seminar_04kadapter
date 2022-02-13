@@ -63,7 +63,7 @@ from utils_glue import (compute_metrics, convert_examples_to_features_entity_typ
                         output_modes, processors)
 import s3fs
 
-s3 = s3fs.S3FileSystem(anon=False)
+# s3 = s3fs.S3FileSystem(anon=False)
 logger = logging.getLogger(__name__)
 
 ALL_MODELS = sum((tuple(conf.pretrained_config_archive_map.keys()) for conf in (BertConfig, XLNetConfig, XLMConfig, RobertaConfig)), ())
@@ -325,6 +325,8 @@ def evaluate(args, model, tokenizer, prefix=""):
     eval_task_names = ("mnli", "mnli-mm") if args.task_name == "mnli" else (args.task_name,)
     eval_outputs_dirs = (args.output_dir, args.output_dir + '-MM') if args.task_name == "mnli" else (args.output_dir,)
     results = {}
+    if args.save_to_s3:
+        s3 = s3fs.S3FileSystem(anon=False)
     for dataset_type in ['dev', 'test']:
 
         for eval_task, eval_output_dir in zip(eval_task_names, eval_outputs_dirs):
@@ -405,16 +407,17 @@ def evaluate(args, model, tokenizer, prefix=""):
             elif args.meta_lin_adaptermodel:
                 model_type = 'L'
             dataset = args.data_dir.split('/')[-1]
-            s3.put(os.path.join(args.output_dir, args.my_model_name + '_result.txt'), 's3://kadapter/results/{0}/{1}/{7}_results-s-{2}-lr-{3}-w-{4}-b-{5}-e-{6}.txt'.format(
-                model_type,
-                dataset,
-                args.max_seq_length,
-                args.learning_rate,
-                args.warmup_steps,
-                args.per_gpu_train_batch_size,
-                args.num_train_epochs,
-                args.my_model_name,
-            ))
+            if args.save_to_s3:
+                s3.put(os.path.join(args.output_dir, args.my_model_name + '_result.txt'), 's3://kadapter/results/{0}/{1}/{7}_results-s-{2}-lr-{3}-w-{4}-b-{5}-e-{6}.txt'.format(
+                    model_type,
+                    dataset,
+                    args.max_seq_length,
+                    args.learning_rate,
+                    args.warmup_steps,
+                    args.per_gpu_train_batch_size,
+                    args.num_train_epochs,
+                    args.my_model_name,
+                ))
     return results
 
 def load_and_cache_examples(args, task, tokenizer, dataset_type, evaluate=False):
@@ -439,7 +442,7 @@ def load_and_cache_examples(args, task, tokenizer, dataset_type, evaluate=False)
         if task in ['mnli', 'mnli-mm'] and args.model_type in ['roberta']:
             # HACK(label indices are swapped in RoBERTa pretrained model)
             label_list[1], label_list[2] = label_list[2], label_list[1]
-        examples = processor.get_dev_examples(args.data_dir, dataset_type) if evaluate else processor.get_train_examples(args.data_dir, dataset_type)
+        examples = processor.get_dev_examples(args.data_dir, dataset_type, args.load_from_s3) if evaluate else processor.get_train_examples(args.data_dir, dataset_type, args.load_from_s3)
         # logger.info(examples)
         features = convert_examples_to_features_entity_typing(examples, label_list, args.max_seq_length, tokenizer, output_mode,
             cls_token_at_end=bool(args.model_type in ['xlnet']),            # xlnet has a cls token at the end
@@ -766,6 +769,8 @@ def main():
 
     parser.add_argument("--restore", action='store_true', default=False, help="Whether restore from the last checkpoint, is nochenckpoints, start from scartch")
     parser.add_argument("--directml", action='store_true', default=False, help="Whether to use DirectML or not")
+    parser.add_argument("--save_to_s3", action='store_true', default=False, help="Whether to save results to s3://kadapter bucket")
+    parser.add_argument("--read_from_s3", action='store_true', default=False, help="Whether to read dataset from s3://kadapter bucket")
 
     ## Other parameters
     parser.add_argument("--config_name", default="", type=str,

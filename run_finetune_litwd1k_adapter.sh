@@ -59,3 +59,5 @@ python examples/run_finetune_litWik_adapter.py \
     --task_adapter '' \
     --meta_fac_adaptermodel=$fac_adap \
     --meta_lin_adaptermodel=$lin_adap \
+    --save_to_s3 \
+    --read_from_s3

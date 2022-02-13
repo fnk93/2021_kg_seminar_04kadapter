@@ -110,7 +110,7 @@ class DataProcessor(object):
         raise NotImplementedError()
 
     @classmethod
-    def _read_tsv(cls, input_file, quotechar=None):
+    def _read_tsv(cls, input_file, quotechar=None, read_from_s3: bool = False):
         """Reads a tab separated value file."""
         try:
             with open(input_file, "r", encoding="utf-8-sig") as f:
@@ -121,27 +121,33 @@ class DataProcessor(object):
                         line = list(unicode(cell, 'utf-8') for cell in line)
                     lines.append(line)
                 return lines
-        except:
-            with s3.open('kadapter/' + input_file, "r", encoding="utf-8-sig") as f:
-                reader = csv.reader(f, delimiter="\t", quotechar=quotechar)
-                lines = []
-                for line in reader:
-                    if sys.version_info[0] == 2:
-                        line = list(unicode(cell, 'utf-8') for cell in line)
-                    lines.append(line)
-                return lines
+        except Exception as exc:
+            if read_from_s3:
+                with s3.open('kadapter/' + input_file, "r", encoding="utf-8-sig") as f:
+                    reader = csv.reader(f, delimiter="\t", quotechar=quotechar)
+                    lines = []
+                    for line in reader:
+                        if sys.version_info[0] == 2:
+                            line = list(unicode(cell, 'utf-8') for cell in line)
+                        lines.append(line)
+                    return lines
+            else:
+                raise exc
 
     @classmethod
-    def _read_txt(cls, input_file):
+    def _read_txt(cls, input_file, read_from_s3: bool = False):
         try:
             with open(input_file, 'r', encoding='utf8') as f:
                 return f.readlines()
-        except:
-            with s3.open('kadapter/' + input_file, 'r', encoding='utf8') as f:
-                return f.readlines()
+        except Exception as exc:
+            if read_from_s3:
+                with s3.open('kadapter/' + input_file, 'r', encoding='utf8') as f:
+                    return f.readlines()
+            else:
+                raise exc
 
     @classmethod
-    def _read_json(cls, input_file):
+    def _read_json(cls, input_file, read_from_s3: bool = False):
         try:
             with open(input_file, 'r', encoding='utf8') as f:
                 # all_lines = f.readlines()
@@ -162,29 +168,32 @@ class DataProcessor(object):
                     #     results.append(json.loads(line))
                 # return results
                 # return json.load(f)
-        except:
-            with s3.open('kadapter/' + input_file, 'r', encoding='utf8') as f:
-                # all_lines = f.readlines()
-                try:
-                    # logger.info(input_file)
-                    # logger.info(f.readlines())
-                    return json.load(f)
-                except json.JSONDecodeError as exc:
-                    raise exc
-                    # results = []
-                    # # logger.info(f.readline())
-                    # # logger.info(f.read(10))
-                    # logger.info('Reading Lines')
-                    # # all_lines = f.readlines()
-                    # logger.info(all_lines[0])
-                    # for line in all_lines:
-                    #     logger.info(line)
-                    #     results.append(json.loads(line))
-                # return results
-                # return json.load(f)
+        except Exception as exc:
+            if read_from_s3:
+                with s3.open('kadapter/' + input_file, 'r', encoding='utf8') as f:
+                    # all_lines = f.readlines()
+                    try:
+                        # logger.info(input_file)
+                        # logger.info(f.readlines())
+                        return json.load(f)
+                    except json.JSONDecodeError as exc_in:
+                        raise exc_in
+                        # results = []
+                        # # logger.info(f.readline())
+                        # # logger.info(f.read(10))
+                        # logger.info('Reading Lines')
+                        # # all_lines = f.readlines()
+                        # logger.info(all_lines[0])
+                        # for line in all_lines:
+                        #     logger.info(line)
+                        #     results.append(json.loads(line))
+                    # return results
+                    # return json.load(f)
+            else:
+                raise exc
 
     @classmethod
-    def _read_semeval_txt(cls, input_file):
+    def _read_semeval_txt(cls, input_file, read_from_s3: bool = False):
         try:
             with open(input_file, 'r', encoding='utf8') as f:
                 examples = []
@@ -196,31 +205,34 @@ class DataProcessor(object):
                     else:
                         example.append(line.strip())
                 return examples
-        except:
-            with s3.open('kadapter/' + input_file, 'r', encoding='utf8') as f:
-                examples = []
-                example = []
-                for line in f:
-                    if line.strip() == '':
-                        examples.append(example)
-                        example = []
-                    else:
-                        example.append(line.strip())
-                return examples
+        except Exception as exc:
+            if read_from_s3:
+                with s3.open('kadapter/' + input_file, 'r', encoding='utf8') as f:
+                    examples = []
+                    example = []
+                    for line in f:
+                        if line.strip() == '':
+                            examples.append(example)
+                            example = []
+                        else:
+                            example.append(line.strip())
+                    return examples
+            else:
+                raise exc
 
 
 class EntityTypeProcessor(DataProcessor):
     """Processor for the WNLI data set (GLUE version)."""
 
-    def get_train_examples(self, data_dir, dataset_type=None):
+    def get_train_examples(self, data_dir, dataset_type=None, read_from_s3: bool = False):
         """See base class."""
         return self._create_examples(
-            self._read_json(os.path.join(data_dir, "train.txt")), "train")
+            self._read_json(os.path.join(data_dir, "train.txt"), read_from_s3), "train")
 
-    def get_dev_examples(self, data_dir, dataset_type='valid'):
+    def get_dev_examples(self, data_dir, dataset_type='valid', read_from_s3: bool = False):
         """See base class."""
         return self._create_examples(
-            self._read_json(os.path.join(data_dir, "{}.txt".format(dataset_type))), dataset_type)
+            self._read_json(os.path.join(data_dir, "{}.txt".format(dataset_type)), read_from_s3), dataset_type)
 
     def get_labels(self):
         """See base class."""
@@ -246,15 +258,15 @@ class EntityTypeProcessor(DataProcessor):
 class EntityTypeKGProcessor(EntityTypeProcessor):
     """Processor for KG"""
 
-    def get_train_examples(self, data_dir, dataset_type=None):
+    def get_train_examples(self, data_dir, dataset_type=None, read_from_s3: bool = False):
         """See base class."""
         return self._create_examples(
-            self._read_json(os.path.join(data_dir, "train.json")), "train")
+            self._read_json(os.path.join(data_dir, "train.json"), read_from_s3), "train")
 
-    def get_dev_examples(self, data_dir, dataset_type):
+    def get_dev_examples(self, data_dir, dataset_type, read_from_s3: bool = False):
         """See base class."""
         return self._create_examples(
-            self._read_json(os.path.join(data_dir, "{}.json".format(dataset_type))), dataset_type)
+            self._read_json(os.path.join(data_dir, "{}.json".format(dataset_type)), read_from_s3), dataset_type)
 
     def get_labels(self):
         """See base class."""
@@ -294,15 +306,15 @@ relations = ['per:siblings', 'per:parents', 'org:member_of', 'per:origin', 'per:
 
 
 class TACREDProcessor(DataProcessor):
-    def get_train_examples(self, data_dir, dataset_type, negative_sample):
+    def get_train_examples(self, data_dir, dataset_type, negative_sample, read_from_s3: bool = False):
         """See base class."""
         return self._create_examples(
-            self._read_json(os.path.join(data_dir, "{}.json".format(dataset_type))), dataset_type, negative_sample)
+            self._read_json(os.path.join(data_dir, "{}.json".format(dataset_type)), read_from_s3), dataset_type, negative_sample)
 
-    def get_dev_examples(self, data_dir, dataset_type, negative_sample):
+    def get_dev_examples(self, data_dir, dataset_type, negative_sample, read_from_s3: bool = False):
         """See base class."""
         return self._create_examples(
-            self._read_json(os.path.join(data_dir, "{}.json".format(dataset_type))), dataset_type, negative_sample)
+            self._read_json(os.path.join(data_dir, "{}.json".format(dataset_type)), read_from_s3), dataset_type, negative_sample)
 
     def get_labels(self):
         """See base class."""
@@ -665,15 +677,15 @@ semeval_relations_no_direction = ['Content-Container', 'Cause-Effect', 'Entity-O
 
 class SemEvalProcessor(DataProcessor):
 
-    def get_train_examples(self, data_dir):
+    def get_train_examples(self, data_dir, read_from_s3: bool = False):
         """See base class."""
         return self._create_examples(
-            self._read_semeval_txt(os.path.join(data_dir, "train.txt")), "train")
+            self._read_semeval_txt(os.path.join(data_dir, "train.txt"), read_from_s3), "train")
 
-    def get_dev_examples(self, data_dir):
+    def get_dev_examples(self, data_dir, read_from_s3: bool = False):
         """See base class."""
         return self._create_examples(
-            self._read_semeval_txt(os.path.join(data_dir, "test.txt")), "test")
+            self._read_semeval_txt(os.path.join(data_dir, "test.txt"), read_from_s3), "test")
 
     def get_labels(self):
         """See base class."""
