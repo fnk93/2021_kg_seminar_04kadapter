@@ -7,7 +7,7 @@ authors = ["fnk93 <f.krueger1993@gmail.com>"]
 [tool.poetry.dependencies]
 python = "^3.8"
 tqdm = "^4.62.3"
-boto3 = "^1.20.43"
+boto3 = "*"
 requests = "^2.27.1"
 regex = "^2022.1.18"
 sentencepiece = "^0.1.96"
@@ -21,6 +21,7 @@ datasets = "^1.18.1"
 torch = "^1.10.2"
 torchvision = "^0.11.3"
 Wikidata = "^0.7.0"
+s3fs = "^2022.1.0"
 
 [tool.poetry.dev-dependencies]
 mypy = "^0.931"
