@@ -121,7 +121,7 @@ class DataProcessor(object):
                         line = list(unicode(cell, 'utf-8') for cell in line)
                     lines.append(line)
                 return lines
-        except
+        except:
             with s3.open('kadapter/' + input_file, "r", encoding="utf-8-sig") as f:
                 reader = csv.reader(f, delimiter="\t", quotechar=quotechar)
                 lines = []
@@ -196,7 +196,7 @@ class DataProcessor(object):
                     else:
                         example.append(line.strip())
                 return examples
-        except
+        except:
             with s3.open('kadapter/' + input_file, 'r', encoding='utf8') as f:
                 examples = []
                 example = []
