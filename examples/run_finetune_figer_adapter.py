@@ -739,11 +739,11 @@ class FIGERModel(nn.Module):
             if self.fac_adapter is not None and self.lin_adapter is not None:
                 task_features = self.task_dense(torch.cat([fac_features, lin_features], dim=2))
             elif self.fac_adapter is not None:
-                task_features = self.task_dense(torch.cat([fac_features], dim=2))
+                task_features = fac_features
             elif self.lin_adapter is not None:
-                task_features = self.task_dense(torch.cat([lin_features], dim=2))
+                task_features = lin_features
             else:
-                task_features = self.task_dense(torch.cat([combine_features], dim=2))
+                task_features = combine_features
 
         start_id = start_id.unsqueeze(1)
         entity_output = torch.bmm(start_id, task_features)
