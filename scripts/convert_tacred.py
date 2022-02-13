@@ -204,13 +204,17 @@ def convert_data(path: pathlib.Path, out_path: pathlib.Path, file: str, new_file
         subject = line['ents'][0][0]
         object_ = line['ents'][1][0]
         token_ = line['text'].split(' ')
+        if line['label'] == 'NA':
+            relation = 'no_relation'
+        else:
+            relation = line['label']
         result = {
             'token': token_,
             'subj_start': token_.index(subject.split(' ')[0]),
             'subj_end': token_.index(subject.split(' ')[-1]),
             'obj_start': token_.index(object_.split(' ')[0]),
             'obj_end': token_.index(object_.split(' ')[-1]),
-            'relation': line['label'],
+            'relation': relation,
         }
         # print(result)
         # all_relations.add(line_vals[1])
