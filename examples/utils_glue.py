@@ -843,7 +843,12 @@ def convert_examples_to_features_tacred(examples, label_list, max_seq_length,
         tokens = ['<s>'] + tokens + ['</s>']
         subj_special_start += 1
         obj_special_start += 1
-        relation = label_map[example.label]
+        try:
+            relation = label_map[example.label]
+        except Exception as exc:
+            logger.info(json.dumps(label_map))
+            logger.info(example.label)
+            raise exc
 
         segment_ids = [sequence_a_segment_id] * len(tokens)
         input_ids = tokenizer.convert_tokens_to_ids(tokens)
