@@ -48,7 +48,6 @@ CUDA_VISIBLE_DEVICES=$GPU python examples/run_finetune_TACRED_adapter.py \
     --per_gpu_train_batch_size=$batch_size   \
     --learning_rate=$lr \
     --gradient_accumulation_steps=1 \
-    --max_steps=12000  \
     --model_name=roberta-large  \
     --overwrite_output_dir   \
     --overwrite_cache \
@@ -64,3 +63,4 @@ CUDA_VISIBLE_DEVICES=$GPU python examples/run_finetune_TACRED_adapter.py \
     --meta_lin_adaptermodel=$lin_adap \
     --save_to_s3 \
     --read_from_s3
+    --num_train_epochs=5
