@@ -848,6 +848,7 @@ def convert_examples_to_features_tacred(examples, label_list, max_seq_length,
         except Exception as exc:
             logger.info(json.dumps(label_map))
             logger.info(example.label)
+            logger.info(example.text_a)
             raise exc
 
         segment_ids = [sequence_a_segment_id] * len(tokens)
