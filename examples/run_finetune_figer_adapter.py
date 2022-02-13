@@ -732,17 +732,15 @@ class FIGERModel(nn.Module):
                 task_features = task_features + lin_adapter_outputs
         elif self.args.fusion_mode == 'concat':
             combine_features = pretrained_model_last_hidden_states
-            if self.fac_adapter is not None:
+            if self.args.meta_fac_adaptermodel:
                 fac_features = self.task_dense_fac(torch.cat([combine_features, fac_adapter_outputs], dim=2))
-            if self.lin_adapter is not None:
-                lin_features = self.task_dense_lin(torch.cat([combine_features, lin_adapter_outputs], dim=2))
-            if self.fac_adapter is not None and self.lin_adapter is not None:
-                task_features = self.task_dense(torch.cat([fac_features, lin_features], dim=2))
-            elif self.fac_adapter is not None:
                 task_features = fac_features
-            elif self.lin_adapter is not None:
+            if self.args.meta_lin_adaptermodel:
+                lin_features = self.task_dense_lin(torch.cat([combine_features, lin_adapter_outputs], dim=2))
                 task_features = lin_features
-            else:
+            if (self.fac_adapter is not None) and (self.lin_adapter is not None):
+                task_features = self.task_dense(torch.cat([fac_features, lin_features], dim=2))
+            elif (self.fac_adapter is None) and (self.lin_adapter is None):
                 task_features = combine_features
 
         start_id = start_id.unsqueeze(1)
