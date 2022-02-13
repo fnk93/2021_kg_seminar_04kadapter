@@ -676,9 +676,18 @@ class ETModel(nn.Module):
                 task_features = task_features + lin_adapter_outputs
         elif self.args.fusion_mode == 'concat':
             combine_features = pretrained_model_last_hidden_states
-            fac_features = self.task_dense_fac(torch.cat([combine_features, fac_adapter_outputs], dim=2))
-            lin_features = self.task_dense_lin(torch.cat([combine_features, lin_adapter_outputs], dim=2))
-            task_features = self.task_dense(torch.cat([fac_features, lin_features], dim=2))
+            if self.fac_adapter is not None:
+                fac_features = self.task_dense_fac(torch.cat([combine_features, fac_adapter_outputs], dim=2))
+            if self.lin_adapter is not None:
+                lin_features = self.task_dense_lin(torch.cat([combine_features, lin_adapter_outputs], dim=2))
+            if self.fac_adapter is not None and self.lin_adapter is not None:
+                task_features = self.task_dense(torch.cat([fac_features, lin_features], dim=2))
+            elif self.fac_adapter is not None:
+                task_features = self.task_dense(torch.cat([fac_features], dim=2))
+            elif self.lin_adapter is not None:
+                task_features = self.task_dense(torch.cat([lin_features], dim=2))
+            else:
+                task_features = self.task_dense(torch.cat([combine_features], dim=2))
 
         start_id = start_id.unsqueeze(1)
         entity_output = torch.bmm(start_id, task_features)
