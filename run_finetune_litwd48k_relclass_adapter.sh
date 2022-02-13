@@ -31,6 +31,7 @@ fac_adap='./pretrained_models/fac-adapter/pytorch_model.bin'
 lin_adap='./pretrained_models/lin-adapter/pytorch_model.bin'
 comment='fl-adapter-dif-trf'
 dataset=data/LitWD48Krel
+batch_size=8
 
 CUDA_VISIBLE_DEVICES=$GPU python examples/run_finetune_TACRED_adapter.py \
     --model_type roberta \
