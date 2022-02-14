@@ -4,7 +4,7 @@
 # best results for F + L
 batch=64
 # batch=8
-accu=64
+accu=8
 lr=1e-5
 GPU="0"
 warmup=0
@@ -33,7 +33,6 @@ python examples/run_finetune_cosmosqa_adapter.py \
     --save_steps=2000 \
     --adam_epsilon 1e-6 \
     --weight_decay 0 \
-    --train_steps 75786 \
     --report_steps 20000000000 \
     --freeze_bert="" \
     --freeze_adapter="True" \
@@ -43,4 +42,5 @@ python examples/run_finetune_cosmosqa_adapter.py \
     --meta_fac_adaptermodel=$fac_adap \
     --meta_lin_adaptermodel=$lin_adap \
     --save_to_s3 \
-    --read_from_s3
+    --read_from_s3 \
+    --num_train_epochs=3
