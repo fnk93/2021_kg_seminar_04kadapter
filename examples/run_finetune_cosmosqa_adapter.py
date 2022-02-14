@@ -904,9 +904,9 @@ def main():
 
         if args.train_steps > 0:
             num_train_optimization_steps = args.train_steps
-            args.num_train_epochs = args.train_steps // (len(train_dataloader) // args.gradient_accumulation_steps) + 1
+            args.num_train_epochs = int(args.train_steps // (len(train_dataloader) // args.gradient_accumulation_steps) + 1)
         else:
-            num_train_optimization_steps = len(train_dataloader) // args.gradient_accumulation_steps * args.num_train_epochs
+            num_train_optimization_steps = int(len(train_dataloader) // args.gradient_accumulation_steps * args.num_train_epochs)
 
         # Prepare optimizer
         #
