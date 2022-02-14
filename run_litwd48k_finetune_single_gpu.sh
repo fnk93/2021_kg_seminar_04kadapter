@@ -28,6 +28,7 @@ fac_adap='./pretrained_models/fac-adapter/pytorch_model.bin'
 lin_adap='./pretrained_models/lin-adapter/pytorch_model.bin'
 comment='fl-litwd48k-adapter'
 dataset=data/LitWD48K
+accu=512
 python examples/run_finetune_litWik_adapter.py \
     --model_type roberta \
     --model_name_or_path roberta-large \
@@ -43,7 +44,7 @@ python examples/run_finetune_litWik_adapter.py \
     --per_gpu_eval_batch_size=$batch_size   \
     --per_gpu_train_batch_size=$batch_size   \
     --learning_rate=$lr \
-    --gradient_accumulation_steps=1 \
+    --gradient_accumulation_steps=$accu \
     --max_steps=-1  \
     --model_name=roberta-large  \
     --overwrite_output_dir   \
@@ -106,7 +107,7 @@ python examples/run_finetune_litWik_adapter.py \
     --per_gpu_eval_batch_size=$batch_size   \
     --per_gpu_train_batch_size=$batch_size   \
     --learning_rate=$lr \
-    --gradient_accumulation_steps=1 \
+    --gradient_accumulation_steps=$accu \
     --max_steps=-1  \
     --model_name=roberta-large  \
     --overwrite_output_dir   \
@@ -169,7 +170,7 @@ python examples/run_finetune_litWik_adapter.py \
     --per_gpu_eval_batch_size=$batch_size   \
     --per_gpu_train_batch_size=$batch_size   \
     --learning_rate=$lr \
-    --gradient_accumulation_steps=1 \
+    --gradient_accumulation_steps=$accu \
     --max_steps=-1  \
     --model_name=roberta-large  \
     --overwrite_output_dir   \
@@ -221,7 +222,7 @@ lin_adap='./pretrained_models/lin-adapter/pytorch_model.bin'
 comment='fl-adapter-dif-trf'
 dataset=data/LitWD48Krel
 batch_size=8
-
+accu=4
 CUDA_VISIBLE_DEVICES=$GPU python examples/run_finetune_TACRED_adapter.py \
     --model_type roberta \
     --model_name_or_path roberta-large \
@@ -236,7 +237,7 @@ CUDA_VISIBLE_DEVICES=$GPU python examples/run_finetune_TACRED_adapter.py \
     --per_gpu_eval_batch_size=$batch_size   \
     --per_gpu_train_batch_size=$batch_size   \
     --learning_rate=$lr \
-    --gradient_accumulation_steps=1 \
+    --gradient_accumulation_steps=$accu \
     --model_name=roberta-large  \
     --overwrite_output_dir   \
     --overwrite_cache \
@@ -303,7 +304,7 @@ CUDA_VISIBLE_DEVICES=$GPU python examples/run_finetune_TACRED_adapter.py \
     --per_gpu_eval_batch_size=$batch_size   \
     --per_gpu_train_batch_size=$batch_size   \
     --learning_rate=$lr \
-    --gradient_accumulation_steps=1 \
+    --gradient_accumulation_steps=$accu \
     --model_name=roberta-large  \
     --overwrite_output_dir   \
     --overwrite_cache \
@@ -370,7 +371,7 @@ CUDA_VISIBLE_DEVICES=$GPU python examples/run_finetune_TACRED_adapter.py \
     --per_gpu_eval_batch_size=$batch_size   \
     --per_gpu_train_batch_size=$batch_size   \
     --learning_rate=$lr \
-    --gradient_accumulation_steps=1 \
+    --gradient_accumulation_steps=$accu \
     --model_name=roberta-large  \
     --overwrite_output_dir   \
     --overwrite_cache \

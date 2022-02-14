@@ -2,7 +2,7 @@
 # Licensed under the MIT license.
 
 # best results for F + L
-batch=64
+batch=8
 # batch=8
 accu=8
 lr=1e-5

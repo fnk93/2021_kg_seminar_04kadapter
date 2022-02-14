@@ -27,6 +27,7 @@ fac_adap='./pretrained_models/fac-adapter/pytorch_model.bin'
 lin_adap='./pretrained_models/lin-adapter/pytorch_model.bin'
 comment='fl-figer-adapter'
 batch_size=4
+accu=512
 
 dataset=data/FIGER
 
@@ -45,7 +46,7 @@ python examples/run_finetune_figer_adapter.py \
     --per_gpu_eval_batch_size=$batch_size   \
     --per_gpu_train_batch_size=$batch_size   \
     --learning_rate=$lr \
-    --gradient_accumulation_steps=1 \
+    --gradient_accumulation_steps=$accu \
     --max_steps=-1  \
     --model_name=roberta-large  \
     --overwrite_output_dir   \
@@ -112,7 +113,7 @@ python examples/run_finetune_figer_adapter.py \
     --per_gpu_eval_batch_size=$batch_size   \
     --per_gpu_train_batch_size=$batch_size   \
     --learning_rate=$lr \
-    --gradient_accumulation_steps=1 \
+    --gradient_accumulation_steps=$accu \
     --max_steps=-1  \
     --model_name=roberta-large  \
     --overwrite_output_dir   \
@@ -179,7 +180,7 @@ python examples/run_finetune_figer_adapter.py \
     --per_gpu_eval_batch_size=$batch_size   \
     --per_gpu_train_batch_size=$batch_size   \
     --learning_rate=$lr \
-    --gradient_accumulation_steps=1 \
+    --gradient_accumulation_steps=$accu \
     --max_steps=-1  \
     --model_name=roberta-large  \
     --overwrite_output_dir   \
