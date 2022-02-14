@@ -902,7 +902,11 @@ def main():
         train_dataloader = DataLoader(train_data, sampler=train_sampler,
                                       batch_size=args.train_batch_size // args.gradient_accumulation_steps)
 
-        num_train_optimization_steps = args.train_steps
+        if args.train_steps > 0:
+            num_train_optimization_steps = args.train_steps
+            args.num_train_epochs = args.train_steps // (len(train_dataloader) // args.gradient_accumulation_steps) + 1
+        else:
+            num_train_optimization_steps = len(train_dataloader) // args.gradient_accumulation_steps * args.num_train_epochs
 
         # Prepare optimizer
         #
