@@ -42,9 +42,7 @@ For _TACRED_ the data of the url provided had to be transformed, see [_/scripts/
 
 ### SearchQA, CosmosQA, Quasar-T
 
-[CosmosQA](https://github.com/wilburOne/cosmosqa/tree/master/data/)
-
-For _CosmosQA_ the data of the url provided had to be transformed, see [_/scripts/convert_cosmosQA.py_](https://github.com/fnk93/2021_kg_seminar_04kadapter/blob/main/scripts/convert_cosmosQA.py)
+[CosmosQA](https://storage.googleapis.com/ai2-mosaic/public/cosmosqa/cosmosqa-data.zip)
 
 [SearchQA + Quasar-T](https://thunlp.oss-cn-qingdao.aliyuncs.com/OpenQA_data.tar.gz)
 
