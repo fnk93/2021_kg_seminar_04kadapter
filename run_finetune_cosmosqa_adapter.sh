@@ -33,7 +33,7 @@ python examples/run_finetune_cosmosqa_adapter.py \
     --save_steps=2000 \
     --adam_epsilon 1e-6 \
     --weight_decay 0 \
-    --train_steps 20000 \
+    --train_steps 76764 \
     --report_steps 20000000000 \
     --freeze_bert="" \
     --freeze_adapter="True" \
