@@ -4,7 +4,7 @@
 # best results for F + L
 batch=64
 # batch=8
-accu=32
+accu=64
 lr=1e-5
 GPU="0"
 warmup=0
