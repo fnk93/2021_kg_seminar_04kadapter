@@ -912,7 +912,7 @@ def main():
             t_total = args.train_steps
         else:
             num_train_optimization_steps = int(len(train_dataloader) // args.gradient_accumulation_steps * args.num_train_epochs)
-            num_train_steps = int(len(train_examples) / args.gradient_accumulation_steps * args.num_train_epochs)
+            num_train_steps = int(len(train_dataloader) / args.gradient_accumulation_steps * args.num_train_epochs)
             t_total = num_train_steps
         # Prepare optimizer
         #
