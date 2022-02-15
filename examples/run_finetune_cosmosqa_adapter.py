@@ -912,7 +912,7 @@ def main():
             t_total = args.train_steps
         else:
             num_train_optimization_steps = int(len(train_dataloader) // args.gradient_accumulation_steps * args.num_train_epochs)
-            num_train_steps = int(len(train_examples) / args.train_batch_size / args.gradient_accumulation_steps * args.num_train_epochs)
+            num_train_steps = int(len(train_examples) / args.gradient_accumulation_steps * args.num_train_epochs)
             t_total = num_train_steps
         # Prepare optimizer
         #
@@ -948,10 +948,15 @@ def main():
 
         global_step = 0
 
+        # Train!
         logger.info("***** Running training *****")
-        logger.info("  Num examples = %d", len(train_examples))
-        logger.info("  Batch size = %d", args.train_batch_size // args.gradient_accumulation_steps)
-        logger.info("  Num steps = %d", t_total)
+        logger.info("  Num examples = %d", len(train_dataset))
+        logger.info("  Num Epochs = %d", args.num_train_epochs)
+        logger.info("  Instantaneous batch size per GPU = %d", args.per_gpu_train_batch_size)
+        logger.info("  Total train batch size (w. parallel, distributed & accumulation) = %d",
+                    args.train_batch_size * args.gradient_accumulation_steps * (torch.distributed.get_world_size() if args.local_rank != -1 else 1))
+        logger.info("  Gradient Accumulation steps = %d", args.gradient_accumulation_steps)
+        logger.info("  Total optimization steps = %d", t_total)
 
         if args.restore:
             logger.info("Try resume from checkpoint")
@@ -1000,11 +1005,6 @@ def main():
             logger.info("Start from scratch")
 
         best_acc = 0
-        if args.freeze_bert:
-            pretrained_model.eval()
-        else:
-            pretrained_model.train()
-        cosmosqa_model.train()
         tr_loss, logging_loss = 0.0, 0.0
         # nb_tr_examples, nb_tr_steps = 0, 0
         # bar = tqdm(range(num_train_optimization_steps-nb_tr_steps), total=num_train_optimization_steps-nb_tr_steps)
@@ -1017,6 +1017,13 @@ def main():
             for step, batch in enumerate(tqdm(train_dataloader, desc="Iteration")):
             # batch = next(train_dataloader)
                 start = time.time()
+                if args.restore and (step < start_step):
+                    continue
+                if args.freeze_bert:
+                    pretrained_model.eval()
+                else:
+                    pretrained_model.train()
+                cosmosqa_model.train()
                 batch = tuple(t.to(device) for t in batch)
                 input_ids, input_mask, segment_ids, label_ids = batch
                 # loss = model(input_ids=input_ids, token_type_ids=segment_ids, attention_mask=input_mask, labels=label_ids)
