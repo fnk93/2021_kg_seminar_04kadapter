@@ -594,13 +594,13 @@ class AdapterModel(nn.Module):
         # pooler_output = outputs[1]
         hidden_states = outputs[2]
         num = len(hidden_states)
-        try:
-            hidden_states_last = torch.zeros(sequence_output.size()).to('cuda')
-        except:
-            if self.directml:
-                hidden_states_last = torch.zeros(sequence_output.size()).to('dml')
-            else:
-                hidden_states_last = torch.zeros(sequence_output.size())
+        # try:
+        hidden_states_last = torch.zeros(sequence_output.size()).to('cuda')
+        # except:
+        #     if self.directml:
+        #         hidden_states_last = torch.zeros(sequence_output.size()).to('dml')
+        #     else:
+        #         hidden_states_last = torch.zeros(sequence_output.size())
         # hidden_states_last = torch.zeros(sequence_output.size())
 
         adapter_hidden_states = []
