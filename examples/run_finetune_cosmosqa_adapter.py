@@ -1046,10 +1046,10 @@ def main():
                 nb_tr_examples += input_ids.size(0)
                 nb_tr_steps += 1
 
-                logger.info("Epoch {}/{} - Iter {} / {}, loss = {:.5f}, time used = {:.3f}s".format(epoch, int(args.num_train_epochs),step,
-                                                                                             len(train_dataloader),
-                                                                                             loss.item(),
-                                                                                             time.time() - start))
+                # logger.info("Epoch {}/{} - Iter {} / {}, loss = {:.5f}, time used = {:.3f}s".format(epoch, int(args.num_train_epochs),step,
+                #                                                                              len(train_dataloader),
+                #                                                                              loss.item(),
+                #                                                                              time.time() - start))
 
                 if args.fp16:
                     optimizer.backward(loss)
