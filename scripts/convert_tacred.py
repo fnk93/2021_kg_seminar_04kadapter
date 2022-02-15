@@ -1,7 +1,7 @@
 import json
 import pathlib
 from typing import Optional
-from wikidata.client import Client
+# from wikidata.client import Client
 # from Wikidata.client
 # from qwikidata
 
