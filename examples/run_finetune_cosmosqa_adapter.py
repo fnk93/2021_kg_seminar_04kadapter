@@ -984,7 +984,7 @@ def main():
                 global_step += 1
                 nb_tr_steps += 1
                 start_epoch = int(global_step / len(train_dataloader))
-                # start_step = global_step-start_epoch*len(train_dataloader)-1
+                start_step = global_step-start_epoch*len(train_dataloader)-1
                 logger.info("Start from global_step={} epoch={} step={}".format(global_step, start_epoch, nb_tr_steps))
                 # if args.local_rank in [-1, 0]:
                 #     tb_writer = SummaryWriter(log_dir="runs/" + args.my_model_name, purge_step=global_step)
@@ -992,7 +992,7 @@ def main():
             else:
                 global_step = 0
                 start_epoch = 0
-                # start_step = 0
+                start_step = 0
                 # if args.local_rank in [-1, 0]:
                 #     tb_writer = SummaryWriter(log_dir="runs/" + args.my_model_name, purge_step=global_step)
                 nb_tr_examples, nb_tr_steps = 0, 0
