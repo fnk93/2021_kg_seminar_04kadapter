@@ -904,7 +904,7 @@ def main():
         else:
             train_sampler = DistributedSampler(train_data)
         train_dataloader = DataLoader(train_data, sampler=train_sampler,
-                                      batch_size=args.train_batch_size // args.gradient_accumulation_steps)
+                                      batch_size=args.train_batch_size)
 
         if args.train_steps > 0:
             num_train_optimization_steps = args.train_steps
@@ -954,8 +954,8 @@ def main():
         logger.info("  Num Epochs = %d", args.num_train_epochs)
         logger.info("  Instantaneous batch size per GPU = %d", args.per_gpu_train_batch_size)
         logger.info("  Total train batch size (w. parallel, distributed & accumulation) = %d",
-                    # args.train_batch_size * args.gradient_accumulation_steps * (torch.distributed.get_world_size() if args.local_rank != -1 else 1))
-                    args.train_batch_size * (torch.distributed.get_world_size() if args.local_rank != -1 else 1))
+                    args.train_batch_size * args.gradient_accumulation_steps * (torch.distributed.get_world_size() if args.local_rank != -1 else 1))
+                    # args.train_batch_size * (torch.distributed.get_world_size() if args.local_rank != -1 else 1))
         logger.info("  Gradient Accumulation steps = %d", args.gradient_accumulation_steps)
         logger.info("  Total optimization steps = %d", t_total)
 
