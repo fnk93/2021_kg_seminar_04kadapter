@@ -36,9 +36,7 @@ Pre-trained adapters have been obtained from the google drive link of the origin
 
 [FIGER](https://drive.google.com/open?id=0B52yRXcdpG6MMnRNV3dTdGdYQ2M)
 
-[TACRED](https://drive.google.com/open?id=1HlWw7Q6-dFSm9jNSCh4VaBf1PlGqt9im)
-
-For _TACRED_ the data of the url provided had to be transformed, see [_/scripts/convert_tacred.py_](https://github.com/fnk93/2021_kg_seminar_04kadapter/blob/main/scripts/convert_tacred.py)
+[TACRED](https://catalog.ldc.upenn.edu/LDC2018T24)
 
 ### SearchQA, CosmosQA, Quasar-T
 
