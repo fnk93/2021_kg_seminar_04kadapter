@@ -682,7 +682,14 @@ class TACREDModel(nn.Module):
                 self.task_dense = nn.Linear(self.config.hidden_size + self.config.hidden_size, self.config.hidden_size)
 
         # TODO: fix for other datasets using this file
-        self.num_labels = 42
+        if self.args.task == 'tacred':
+            self.num_labels = 42
+        elif self.args.task == 'litwd':
+            self.num_labels = 280
+        elif self.args.task == 'wn18rr':
+            self.num_labels = 11
+        elif self.args.task == 'fb15k':
+            self.num_labels = 237
 
         self.dense = nn.Linear(self.config.hidden_size * 2, self.config.hidden_size)
         self.dropout = nn.Dropout(self.config.hidden_dropout_prob)
