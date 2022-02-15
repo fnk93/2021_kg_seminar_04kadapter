@@ -701,6 +701,8 @@ def main():
                         help="Log every X updates steps.")
     parser.add_argument('--save_steps', type=int, default=50,
                         help="Save checkpoint every X updates steps.")
+    parser.add_argument('--max_save_checkpoints', type=int, default=500,
+                        help="The max amounts of checkpoint saving. Bigger than it will delete the former checkpoints")
     parser.add_argument("--eval_all_checkpoints", action='store_true',
                         help="Evaluate all checkpoints starting with the same prefix as model_name ending and ending with step number")
     parser.add_argument("--no_cuda", action='store_true',
@@ -1195,20 +1197,21 @@ def main():
                     # for key, value in result.items():
                     #     tb_writer.add_scalar('eval_{}'.format(key), value, global_step)
 
-                    model_to_save = cosmosqa_model.module if hasattr(cosmosqa_model, 'module') else cosmosqa_model  # Take care of distributed/parallel training
-                    # model_to_save = model.module if hasattr(model,
-                    #                                         'module') else model  # Only save the model it-self
-                    output_model_file = os.path.join(args.output_dir,
-                                                     "pytorch_model_{}_{}.bin".format(global_step + 1,
-                                                                                      eval_accuracy))
-                    torch.save(model_to_save.state_dict(), output_model_file)
-                    model_to_save = pretrained_model.module if hasattr(pretrained_model, 'module') else pretrained_model
-                    output_model_file = os.path.join(args.output_dir,
-                                                     "pytorch_bertmodel_{}_{}.bin".format(global_step + 1,
-                                                                                      eval_accuracy))
-                    torch.save(model_to_save.state_dict(), output_model_file)
+                    # HACK: Disable saving of every eval step
+                    # model_to_save = cosmosqa_model.module if hasattr(cosmosqa_model, 'module') else cosmosqa_model  # Take care of distributed/parallel training
+                    # # model_to_save = model.module if hasattr(model,
+                    # #                                         'module') else model  # Only save the model it-self
+                    # output_model_file = os.path.join(args.output_dir,
+                    #                                  "pytorch_model_{}_{}.bin".format(global_step + 1,
+                    #                                                                   eval_accuracy))
+                    # torch.save(model_to_save.state_dict(), output_model_file)
+                    # model_to_save = pretrained_model.module if hasattr(pretrained_model, 'module') else pretrained_model
+                    # output_model_file = os.path.join(args.output_dir,
+                    #                                  "pytorch_bertmodel_{}_{}.bin".format(global_step + 1,
+                    #                                                                   eval_accuracy))
+                    # torch.save(model_to_save.state_dict(), output_model_file)
 
-                    if eval_accuracy > best_acc and 'dev' in file:
+                    if eval_accuracy > best_acc and 'valid' in file:
                         logger.info("=" * 80)
                         logger.info("Best Acc", eval_accuracy)
                         logger.info("Saving Model......")
