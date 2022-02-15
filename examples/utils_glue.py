@@ -227,12 +227,12 @@ class EntityTypeProcessor(DataProcessor):
     def get_train_examples(self, data_dir, dataset_type=None, read_from_s3: bool = False):
         """See base class."""
         return self._create_examples(
-            self._read_json(os.path.join(data_dir, "train.txt"), read_from_s3), "train")
+            self._read_json(os.path.join(data_dir, "train.json"), read_from_s3), "train")
 
     def get_dev_examples(self, data_dir, dataset_type='valid', read_from_s3: bool = False):
         """See base class."""
         return self._create_examples(
-            self._read_json(os.path.join(data_dir, "{}.txt".format(dataset_type)), read_from_s3), dataset_type)
+            self._read_json(os.path.join(data_dir, "{}.json".format(dataset_type)), read_from_s3), dataset_type)
 
     def get_labels(self):
         """See base class."""
