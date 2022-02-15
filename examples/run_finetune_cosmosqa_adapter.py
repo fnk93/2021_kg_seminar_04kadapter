@@ -451,13 +451,13 @@ class AdapterModel(nn.Module):
         # pooler_output = outputs[1]
         hidden_states = outputs[2]
         num = len(hidden_states)
-        try:
-            hidden_states_last = torch.zeros(sequence_output.size()).to('cuda')
-        except:
-            if self.directml:
-                hidden_states_last = torch.zeros(sequence_output.size()).to('dml')
-            else:
-                hidden_states_last = torch.zeros(sequence_output.size())
+        # try:
+        hidden_states_last = torch.zeros(sequence_output.size()).to('cuda')
+        # except:
+        #     if self.directml:
+        #         hidden_states_last = torch.zeros(sequence_output.size()).to('dml')
+        #     else:
+        #         hidden_states_last = torch.zeros(sequence_output.size())
 
         adapter_hidden_states = []
         adapter_hidden_states_count = 0
@@ -725,7 +725,7 @@ def main():
     parser.add_argument('--server_port', type=str, default='', help="For distant debugging.")
     parser.add_argument('--preprocess_type', type=str, default='', help="How to process the input")
     args = parser.parse_args()
-    args = parser.parse_args()
+    # args = parser.parse_args()
 
     args.adapter_list = args.adapter_list.split(',')
     args.adapter_list = [int(i) for i in args.adapter_list]
@@ -1024,7 +1024,7 @@ def main():
                 else:
                     pretrained_model.train()
                 cosmosqa_model.train()
-                batch = tuple(t.to(device) for t in batch)
+                batch = tuple(t.to(args.device) for t in batch)
                 input_ids, input_mask, segment_ids, label_ids = batch
                 # loss = model(input_ids=input_ids, token_type_ids=segment_ids, attention_mask=input_mask, labels=label_ids)
                 pretrained_model_outputs = pretrained_model(input_ids=input_ids, token_type_ids=None, attention_mask=input_mask, labels=label_ids)
@@ -1147,10 +1147,10 @@ def main():
                         nb_eval_steps, nb_eval_examples = 0, 0
                         for input_ids, input_mask, segment_ids, label_ids in eval_dataloader:
                             start = time.time()
-                            input_ids = input_ids.to(device)
-                            input_mask = input_mask.to(device)
-                            segment_ids = segment_ids.to(device)
-                            label_ids = label_ids.to(device)
+                            input_ids = input_ids.to(args.device)
+                            input_mask = input_mask.to(args.device)
+                            segment_ids = segment_ids.to(args.device)
+                            label_ids = label_ids.to(args.device)
 
                             with torch.no_grad():
                                 # tmp_eval_loss= model(input_ids=input_ids, token_type_ids=segment_ids, attention_mask=input_mask, labels=label_ids)
