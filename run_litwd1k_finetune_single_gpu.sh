@@ -27,7 +27,7 @@ warmup=1000
 fac_adap='./pretrained_models/fac-adapter/pytorch_model.bin'
 lin_adap='./pretrained_models/lin-adapter/pytorch_model.bin'
 comment='fl-litwd1k-adapter'
-batch_size=4
+batch_size=2048
 dataset=data/LitWD1K
 accu=512
 python examples/run_finetune_litWik_adapter.py \
@@ -92,7 +92,7 @@ comment='f-litwd1k-adapter'
 # fac_adap='./pretrained_models/fac-adapter/pytorch_model.bin'
 # lin_adap='./pretrained_models/lin-adapter/pytorch_model.bin'
 # comment='fl-litwd1k-adapter'
-batch_size=4
+batch_size=2048
 dataset=data/LitWD1K
 python examples/run_finetune_litWik_adapter.py \
     --model_type roberta \
@@ -156,7 +156,7 @@ comment='l-litwd1k-adapter'
 # fac_adap='./pretrained_models/fac-adapter/pytorch_model.bin'
 # lin_adap='./pretrained_models/lin-adapter/pytorch_model.bin'
 # comment='fl-litwd1k-adapter'
-batch_size=4
+batch_size=2048
 dataset=data/LitWD1K
 python examples/run_finetune_litWik_adapter.py \
     --model_type roberta \
@@ -224,7 +224,7 @@ fac_adap='./pretrained_models/fac-adapter/pytorch_model.bin'
 lin_adap='./pretrained_models/lin-adapter/pytorch_model.bin'
 comment='fl-adapter-dif-trf'
 dataset=data/LitWD1Krel
-batch_size=8
+batch_size=32
 accu=4
 
 CUDA_VISIBLE_DEVICES=$GPU python examples/run_finetune_TACRED_adapter.py \
@@ -292,7 +292,7 @@ comment='f-adapter-dif-trf'
 # lin_adap='./pretrained_models/lin-adapter/pytorch_model.bin'
 # comment='fl-adapter-dif-trf'
 dataset=data/LitWD1Krel
-batch_size=8
+batch_size=32
 
 CUDA_VISIBLE_DEVICES=$GPU python examples/run_finetune_TACRED_adapter.py \
     --model_type roberta \
@@ -359,7 +359,7 @@ comment='l-adapter-dif-trf'
 # lin_adap='./pretrained_models/lin-adapter/pytorch_model.bin'
 # comment='fl-adapter-dif-trf'
 dataset=data/LitWD1Krel
-batch_size=8
+batch_size=32
 
 CUDA_VISIBLE_DEVICES=$GPU python examples/run_finetune_TACRED_adapter.py \
     --model_type roberta \

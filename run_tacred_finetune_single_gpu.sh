@@ -31,7 +31,7 @@ fac_adap='./pretrained_models/fac-adapter/pytorch_model.bin'
 lin_adap='./pretrained_models/lin-adapter/pytorch_model.bin'
 comment='fl-adapter-dif-trf'
 dataset=data/TACRED
-batch_size=8
+batch_size=32
 accu=4
 
 CUDA_VISIBLE_DEVICES=$GPU 
@@ -100,7 +100,7 @@ comment='f-adapter-dif-trf'
 # lin_adap='./pretrained_models/lin-adapter/pytorch_model.bin'
 # comment='fl-adapter-dif-trf'
 # dataset=data/TACRED
-batch_size=8
+batch_size=32
 
 CUDA_VISIBLE_DEVICES=$GPU python examples/run_finetune_TACRED_adapter.py \
     --model_type roberta \
@@ -168,7 +168,7 @@ comment='l-adapter-dif-trf'
 # lin_adap='./pretrained_models/lin-adapter/pytorch_model.bin'
 # comment='fl-adapter-dif-trf'
 # dataset=data/TACRED
-batch_size=8
+batch_size=32
 
 CUDA_VISIBLE_DEVICES=$GPU python examples/run_finetune_TACRED_adapter.py \
     --model_type roberta \

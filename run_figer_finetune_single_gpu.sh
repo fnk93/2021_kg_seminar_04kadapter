@@ -26,7 +26,7 @@ warmup=1000
 fac_adap='./pretrained_models/fac-adapter/pytorch_model.bin'
 lin_adap='./pretrained_models/lin-adapter/pytorch_model.bin'
 comment='fl-figer-adapter'
-batch_size=4
+batch_size=2048
 accu=512
 
 dataset=data/FIGER
@@ -94,7 +94,7 @@ comment='f-figer-adapter'
 # fac_adap='./pretrained_models/fac-adapter/pytorch_model.bin'
 # lin_adap='./pretrained_models/lin-adapter/pytorch_model.bin'
 # comment='fl-figer-adapter'
-batch_size=4
+batch_size=2048
 
 dataset=data/FIGER
 
@@ -161,7 +161,7 @@ comment='l-figer-adapter'
 # fac_adap='./pretrained_models/fac-adapter/pytorch_model.bin'
 # lin_adap='./pretrained_models/lin-adapter/pytorch_model.bin'
 # comment='fl-figer-adapter'
-batch_size=4
+batch_size=2048
 
 dataset=data/FIGER
 
