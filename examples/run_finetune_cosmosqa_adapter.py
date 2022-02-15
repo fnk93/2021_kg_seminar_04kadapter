@@ -1030,7 +1030,7 @@ def main():
                 pretrained_model_outputs = pretrained_model(input_ids=input_ids, token_type_ids=None, attention_mask=input_mask, labels=label_ids)
                 outputs = cosmosqa_model(pretrained_model_outputs,input_ids=input_ids, token_type_ids=None, attention_mask=input_mask, labels=label_ids)
 
-                loss = outputs[0]  # model outputs are always tuple in pytorch-transformers (see doc)
+                loss = outputs  # model outputs are always tuple in pytorch-transformers (see doc)
 
                 # loss = model(input_ids=input_ids, token_type_ids=None, attention_mask=input_mask, labels=label_ids)
                 if args.n_gpu > 1:
