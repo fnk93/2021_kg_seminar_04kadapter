@@ -681,6 +681,7 @@ class TACREDModel(nn.Module):
                 self.task_dense_fac = nn.Linear(self.config.hidden_size + self.config.hidden_size, self.config.hidden_size)
                 self.task_dense = nn.Linear(self.config.hidden_size + self.config.hidden_size, self.config.hidden_size)
 
+        # TODO: fix for other datasets using this file
         self.num_labels = 42
 
         self.dense = nn.Linear(self.config.hidden_size * 2, self.config.hidden_size)
