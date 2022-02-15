@@ -1020,7 +1020,7 @@ def main():
             # print(loss)
             tr_loss += loss.item()
             train_loss = round(tr_loss * args.gradient_accumulation_steps / (nb_tr_steps + 1), 4)
-            bar.set_description("loss {}".format(train_loss))
+            bar.set_description('global_step: {0}, loss: {1}'.format(global_step, train_loss))
             nb_tr_examples += input_ids.size(0)
             nb_tr_steps += 1
 
