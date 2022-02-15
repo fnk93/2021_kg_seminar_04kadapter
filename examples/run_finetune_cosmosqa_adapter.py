@@ -1028,6 +1028,11 @@ def main():
         # bar = tqdm(range(num_train_optimization_steps-nb_tr_steps), total=num_train_optimization_steps-nb_tr_steps)
         # train_dataloader = cycle(train_dataloader)
         eval_flag = True
+        if args.freeze_bert:
+            pretrained_model.eval()
+        else:
+            pretrained_model.train()
+        cosmosqa_model.train()
         # for step in bar:
         for epoch in trange(start_epoch, int(args.num_train_epochs), desc="Epoch"):
             tr_loss, logging_loss = 0.0, 0.0
@@ -1037,11 +1042,7 @@ def main():
                 start = time.time()
                 if args.restore and (step < start_step):
                     continue
-                if args.freeze_bert:
-                    pretrained_model.eval()
-                else:
-                    pretrained_model.train()
-                cosmosqa_model.train()
+                
                 batch = tuple(t.to(args.device) for t in batch)
                 input_ids, input_mask, segment_ids, label_ids = batch
                 # loss = model(input_ids=input_ids, token_type_ids=segment_ids, attention_mask=input_mask, labels=label_ids)
@@ -1058,6 +1059,11 @@ def main():
                 if args.gradient_accumulation_steps > 1:
                     loss = loss / args.gradient_accumulation_steps
                 # print(loss)
+                if args.fp16:
+                    with amp.scale_loss(loss, optimizer) as scaled_loss:
+                        scaled_loss.backward()
+                else:
+                    loss.backward()
                 tr_loss += loss.item()
                 train_loss = round(tr_loss * args.gradient_accumulation_steps / (nb_tr_steps + 1), 4)
                 # bar.set_description('global_step: {0}, loss: {1}'.format(global_step, train_loss))
@@ -1068,12 +1074,6 @@ def main():
                 #                                                                              len(train_dataloader),
                 #                                                                              loss.item(),
                 #                                                                              time.time() - start))
-
-                if args.fp16:
-                    with amp.scale_loss(loss, optimizer) as scaled_loss:
-                        scaled_loss.backward()
-                else:
-                    loss.backward()
 
                 # if (nb_tr_steps + 1) % args.gradient_accumulation_steps == 0:
                 if (step + 1) % args.gradient_accumulation_steps == 0:
