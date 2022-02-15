@@ -724,6 +724,11 @@ def main():
     parser.add_argument('--server_ip', type=str, default='', help="For distant debugging.")
     parser.add_argument('--server_port', type=str, default='', help="For distant debugging.")
     parser.add_argument('--preprocess_type', type=str, default='', help="How to process the input")
+    parser.add_argument('--loss_scale',
+                        type=float, default=0,
+                        help="Loss scaling to improve fp16 numeric stability. Only used when fp16 set to True.\n"
+                             "0 (default value): dynamic loss scaling.\n"
+                             "Positive power of 2: static loss scaling value.\n")
     args = parser.parse_args()
     # args = parser.parse_args()
 
