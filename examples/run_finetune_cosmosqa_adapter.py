@@ -949,8 +949,8 @@ def main():
         logger.info("  Batch size = %d", args.train_batch_size)
         logger.info("  Num steps = %d", num_train_optimization_steps)
 
-        logger.info("Try resume from checkpoint")
         if args.restore:
+            logger.info("Try resume from checkpoint")
             if os.path.exists(os.path.join(args.output_dir, 'global_step.bin')):
                 logger.info("Load last checkpoint data")
                 global_step = torch.load(os.path.join(args.output_dir, 'global_step.bin'))
