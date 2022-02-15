@@ -1080,17 +1080,18 @@ def main():
             #     logger.info("***** Report result *****")
             #     logger.info("  %s = %s", 'global_step', str(global_step+1))
             #     logger.info("  %s = %s", 'train loss', str(train_loss))
-            print('global_step:',global_step)
-            print('args.eval_steps:',args.eval_steps)
-            print(args.do_eval)
+            # print('global_step:',global_step)
+            bar.set_description('global_step: {0}, loss: {1}'.format(global_step, train_loss))
+            # print('args.eval_steps:',args.eval_steps)
+            # print(args.do_eval)
 
-            print((global_step + 1) % args.eval_steps == 0)
-            print(eval_flag)
-            print(args.do_eval and ((global_step + 1) % args.eval_steps == 0) and eval_flag)
+            # print((global_step + 1) % args.eval_steps == 0)
+            # print(eval_flag)
+            # print(args.do_eval and ((global_step + 1) % args.eval_steps == 0) and eval_flag)
             # step % args.gradient_accumulation_steps == 1
             if args.do_eval and ((global_step + 1) % args.eval_steps == 0) and eval_flag:
                 eval_flag = False
-                print('eval...')
+                logger.info('eval...')
                 for file in ['valid.jsonl']:
                     eval_examples = read_examples_dict[args.preprocess_type](os.path.join(args.data_dir, file),
                                                                              is_training=True)
@@ -1208,9 +1209,9 @@ def main():
                     torch.save(model_to_save.state_dict(), output_model_file)
 
                     if eval_accuracy > best_acc and 'dev' in file:
-                        print("=" * 80)
-                        print("Best Acc", eval_accuracy)
-                        print("Saving Model......")
+                        logger.info("=" * 80)
+                        logger.info("Best Acc", eval_accuracy)
+                        logger.info("Saving Model......")
                         best_acc = eval_accuracy
                         # Save a trained model
                         model_to_save = cosmosqa_model.module if hasattr(cosmosqa_model,
