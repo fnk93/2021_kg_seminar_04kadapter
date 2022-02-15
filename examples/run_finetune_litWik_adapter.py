@@ -499,7 +499,7 @@ def load_and_cache_examples(args, task, tokenizer, dataset_type, evaluate=False)
         features = torch.load(cached_features_file)
     else:
         logger.info("Creating features from dataset file at %s", args.data_dir)
-        examples = processor.get_dev_examples(args.data_dir, dataset_type, args.load_from_s3) if evaluate else processor.get_train_examples(args.data_dir, dataset_type, args.load_from_s3)
+        examples = processor.get_dev_examples(args.data_dir, dataset_type, args.read_from_s3) if evaluate else processor.get_train_examples(args.data_dir, dataset_type, args.read_from_s3)
 
         features = convert_examples_to_features_entity_typing(examples, args.label_list, args.max_seq_length, tokenizer, output_mode,
             cls_token_at_end=bool(args.model_type in ['xlnet']),            # xlnet has a cls token at the end

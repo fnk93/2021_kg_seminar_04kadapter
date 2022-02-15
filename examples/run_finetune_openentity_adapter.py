@@ -443,7 +443,7 @@ def load_and_cache_examples(args, task, tokenizer, dataset_type, evaluate=False)
         if task in ['mnli', 'mnli-mm'] and args.model_type in ['roberta']:
             # HACK(label indices are swapped in RoBERTa pretrained model)
             label_list[1], label_list[2] = label_list[2], label_list[1]
-        examples = processor.get_dev_examples(args.data_dir, dataset_type, args.load_from_s3) if evaluate else processor.get_train_examples(args.data_dir, dataset_type, args.load_from_s3)
+        examples = processor.get_dev_examples(args.data_dir, dataset_type, args.read_from_s3) if evaluate else processor.get_train_examples(args.data_dir, dataset_type, args.read_from_s3)
         # logger.info(examples)
         features = convert_examples_to_features_entity_typing(examples, label_list, args.max_seq_length, tokenizer, output_mode,
             cls_token_at_end=bool(args.model_type in ['xlnet']),            # xlnet has a cls token at the end
