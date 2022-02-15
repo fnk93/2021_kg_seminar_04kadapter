@@ -862,9 +862,89 @@ def main():
 
     logger.info("Training/evaluation parameters %s", args)
 
+    read_examples_dict = {
+        'read_examples_origin': read_examples_origin,
+        'read_examples_add_evidence': read_examples_add_evidence
+    }
+    convert_examples_to_features_dict = {
+        'read_examples_origin': convert_examples_to_features,
+        'read_examples_add_evidence': convert_examples_to_features,
+    }
+
+
+    train_examples = read_examples_dict[args.preprocess_type](os.path.join(args.data_dir, 'train.jsonl'),
+                                                                  is_training=True)
+    train_features = convert_examples_to_features_dict[args.preprocess_type](
+        train_examples, tokenizer, args.max_seq_length, True)
+    all_input_ids = torch.tensor(select_field(train_features, 'input_ids'), dtype=torch.long)
+    all_input_mask = torch.tensor(select_field(train_features, 'input_mask'), dtype=torch.long)
+    all_segment_ids = torch.tensor(select_field(train_features, 'segment_ids'), dtype=torch.long)
+    all_label = torch.tensor([f.label for f in train_features], dtype=torch.long)
+    train_data = TensorDataset(all_input_ids, all_input_mask, all_segment_ids, all_label)
+
+    args.train_batch_size = args.per_gpu_train_batch_size * max(1, args.n_gpu)
+    args.eval_batch_size = args.per_gpu_eval_batch_size * max(1, args.n_gpu)
+
+    if args.local_rank == -1:
+        train_sampler = RandomSampler(train_data)
+    else:
+        train_sampler = DistributedSampler(train_data)
+    train_dataloader = DataLoader(train_data, sampler=train_sampler,
+                                    batch_size=args.train_batch_size // args.gradient_accumulation_steps)
+
+    if args.train_steps > 0:
+        num_train_optimization_steps = args.train_steps
+        args.num_train_epochs = int(args.train_steps // (len(train_dataloader) // args.gradient_accumulation_steps) + 1)
+        t_total = args.train_steps
+    else:
+        num_train_optimization_steps = int(len(train_dataloader) // args.gradient_accumulation_steps * args.num_train_epochs)
+        num_train_steps = int(len(train_dataloader) / args.gradient_accumulation_steps * args.num_train_epochs)
+        t_total = num_train_steps
+    # Prepare optimizer
+    #
+    # param_optimizer = list(model.named_parameters())
+    #
+    # # hack to remove pooler, which is not used
+    # # thus it produce None grad that break apex
+    # param_optimizer = [n for n in param_optimizer]
+
+    no_decay = ['bias', 'LayerNorm.bias', 'LayerNorm.weight']
+    if args.freeze_bert:
+        optimizer_grouped_parameters = [
+            {'params': [p for n, p in cosmosqa_model.named_parameters() if not any(nd in n for nd in no_decay)],
+                'weight_decay': args.weight_decay},
+            {'params': [p for n, p in cosmosqa_model.named_parameters() if any(nd in n for nd in no_decay)],
+                'weight_decay': 0.0}
+        ]
+    else:
+        optimizer_grouped_parameters = [
+            {'params': [p for n, p in cosmosqa_model.named_parameters() if not any(nd in n for nd in no_decay)],
+                'weight_decay': args.weight_decay},
+            {'params': [p for n, p in cosmosqa_model.named_parameters() if any(nd in n for nd in no_decay)],
+                'weight_decay': 0.0},
+            {'params': [p for n, p in pretrained_model.named_parameters() if not any(nd in n for nd in no_decay)],
+                'weight_decay': args.weight_decay},
+            {'params': [p for n, p in pretrained_model.named_parameters() if any(nd in n for nd in no_decay)],
+                'weight_decay': 0.0}
+        ]
+
+    optimizer = AdamW(optimizer_grouped_parameters, lr=args.learning_rate, eps=args.adam_epsilon)
+    scheduler = WarmupLinearSchedule(optimizer, warmup_steps=args.warmup_steps,
+                                        t_total=t_total)
+
 
     # if args.fp16:
     #     model.half()
+    if args.fp16:
+        try:
+            from apex import amp
+        except ImportError:
+            raise ImportError("Please install apex from https://www.github.com/nvidia/apex to use fp16 training.")
+        if args.freeze_bert:
+            cosmosqa_model, optimizer = amp.initialize(cosmosqa_model, optimizer, opt_level=args.fp16_opt_level)
+        else:
+            cosmosqa_model, optimizer = amp.initialize(cosmosqa_model, optimizer, opt_level=args.fp16_opt_level)
+            pretrained_model, optimizer = amp.initialize(pretrained_model, optimizer, opt_level=args.fp16_opt_level)
     if args.local_rank != -1:
         try:
             from apex.parallel import DistributedDataParallel as DDP
@@ -880,77 +960,9 @@ def main():
             pretrained_model = torch.nn.DataParallel(pretrained_model)
             cosmosqa_model = torch.nn.DataParallel(cosmosqa_model)
 
-    args.train_batch_size = args.per_gpu_train_batch_size * max(1, args.n_gpu)
-    args.eval_batch_size = args.per_gpu_eval_batch_size * max(1, args.n_gpu)
-
-    read_examples_dict = {
-        'read_examples_origin': read_examples_origin,
-        'read_examples_add_evidence': read_examples_add_evidence
-    }
-    convert_examples_to_features_dict = {
-        'read_examples_origin': convert_examples_to_features,
-        'read_examples_add_evidence': convert_examples_to_features,
-    }
-
     if args.do_train:
         # Prepare data loader
         # tb_writer = SummaryWriter(log_dir="runs/" + args.my_model_name)
-        train_examples = read_examples_dict[args.preprocess_type](os.path.join(args.data_dir, 'train.jsonl'),
-                                                                  is_training=True)
-        train_features = convert_examples_to_features_dict[args.preprocess_type](
-            train_examples, tokenizer, args.max_seq_length, True)
-        all_input_ids = torch.tensor(select_field(train_features, 'input_ids'), dtype=torch.long)
-        all_input_mask = torch.tensor(select_field(train_features, 'input_mask'), dtype=torch.long)
-        all_segment_ids = torch.tensor(select_field(train_features, 'segment_ids'), dtype=torch.long)
-        all_label = torch.tensor([f.label for f in train_features], dtype=torch.long)
-        train_data = TensorDataset(all_input_ids, all_input_mask, all_segment_ids, all_label)
-        if args.local_rank == -1:
-            train_sampler = RandomSampler(train_data)
-        else:
-            train_sampler = DistributedSampler(train_data)
-        train_dataloader = DataLoader(train_data, sampler=train_sampler,
-                                      batch_size=args.train_batch_size // args.gradient_accumulation_steps)
-
-        if args.train_steps > 0:
-            num_train_optimization_steps = args.train_steps
-            args.num_train_epochs = int(args.train_steps // (len(train_dataloader) // args.gradient_accumulation_steps) + 1)
-            t_total = args.train_steps
-        else:
-            num_train_optimization_steps = int(len(train_dataloader) // args.gradient_accumulation_steps * args.num_train_epochs)
-            num_train_steps = int(len(train_dataloader) / args.gradient_accumulation_steps * args.num_train_epochs)
-            t_total = num_train_steps
-        # Prepare optimizer
-        #
-        # param_optimizer = list(model.named_parameters())
-        #
-        # # hack to remove pooler, which is not used
-        # # thus it produce None grad that break apex
-        # param_optimizer = [n for n in param_optimizer]
-
-        no_decay = ['bias', 'LayerNorm.bias', 'LayerNorm.weight']
-        if args.freeze_bert:
-            optimizer_grouped_parameters = [
-                {'params': [p for n, p in cosmosqa_model.named_parameters() if not any(nd in n for nd in no_decay)],
-                 'weight_decay': args.weight_decay},
-                {'params': [p for n, p in cosmosqa_model.named_parameters() if any(nd in n for nd in no_decay)],
-                 'weight_decay': 0.0}
-            ]
-        else:
-            optimizer_grouped_parameters = [
-                {'params': [p for n, p in cosmosqa_model.named_parameters() if not any(nd in n for nd in no_decay)],
-                 'weight_decay': args.weight_decay},
-                {'params': [p for n, p in cosmosqa_model.named_parameters() if any(nd in n for nd in no_decay)],
-                 'weight_decay': 0.0},
-                {'params': [p for n, p in pretrained_model.named_parameters() if not any(nd in n for nd in no_decay)],
-                 'weight_decay': args.weight_decay},
-                {'params': [p for n, p in pretrained_model.named_parameters() if any(nd in n for nd in no_decay)],
-                 'weight_decay': 0.0}
-            ]
-
-        optimizer = AdamW(optimizer_grouped_parameters, lr=args.learning_rate, eps=args.adam_epsilon)
-        scheduler = WarmupLinearSchedule(optimizer, warmup_steps=args.warmup_steps,
-                                         t_total=t_total)
-
         global_step = 0
 
         # Train!
@@ -1058,7 +1070,8 @@ def main():
                 #                                                                              time.time() - start))
 
                 if args.fp16:
-                    optimizer.backward(loss)
+                    with amp.scale_loss(loss, optimizer) as scaled_loss:
+                        scaled_loss.backward()
                 else:
                     loss.backward()
 
