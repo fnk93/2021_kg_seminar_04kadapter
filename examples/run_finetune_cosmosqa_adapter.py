@@ -954,6 +954,8 @@ def main():
             if os.path.exists(os.path.join(args.output_dir, 'global_step.bin')):
                 logger.info("Load last checkpoint data")
                 global_step = torch.load(os.path.join(args.output_dir, 'global_step.bin'))
+                nb_tr_steps = torch.load(os.path.join(args.output_dir, 'nb_tr_steps.bin'))
+                nb_tr_examples = torch.load(os.path.join(args.output_dir, 'nb_tr_examples.bin'))
                 output_dir = os.path.join(args.output_dir, 'checkpoint-{}'.format(global_step))
                 logger.info("Load from output_dir {}".format(output_dir))
 
@@ -971,24 +973,26 @@ def main():
 
 
                 global_step += 1
+                nb_tr_steps += 1
                 start_epoch = int(global_step / len(train_dataloader))
-                start_step = global_step-start_epoch*len(train_dataloader)-1
-                logger.info("Start from global_step={} epoch={} step={}".format(global_step, start_epoch, start_step))
+                # start_step = global_step-start_epoch*len(train_dataloader)-1
+                logger.info("Start from global_step={} epoch={} step={}".format(global_step, start_epoch, nb_tr_steps))
                 # if args.local_rank in [-1, 0]:
                 #     tb_writer = SummaryWriter(log_dir="runs/" + args.my_model_name, purge_step=global_step)
 
             else:
                 global_step = 0
                 start_epoch = 0
-                start_step = 0
+                # start_step = 0
                 # if args.local_rank in [-1, 0]:
                 #     tb_writer = SummaryWriter(log_dir="runs/" + args.my_model_name, purge_step=global_step)
-
+                nb_tr_examples, nb_tr_steps = 0, 0
                 logger.info("Start from scratch")
         else:
             global_step = 0
             start_epoch = 0
             start_step = 0
+            nb_tr_examples, nb_tr_steps = 0, 0
             logger.info("Start from scratch")
 
         best_acc = 0
@@ -998,8 +1002,8 @@ def main():
             pretrained_model.train()
         cosmosqa_model.train()
         tr_loss, logging_loss = 0.0, 0.0
-        nb_tr_examples, nb_tr_steps = 0, 0
-        bar = tqdm(range(num_train_optimization_steps), total=num_train_optimization_steps)
+        # nb_tr_examples, nb_tr_steps = 0, 0
+        bar = tqdm(range(num_train_optimization_steps-nb_tr_steps), total=num_train_optimization_steps-nb_tr_steps)
         train_dataloader = cycle(train_dataloader)
         eval_flag = True
         for step in bar:
@@ -1068,6 +1072,8 @@ def main():
                     torch.save(scheduler.state_dict(), os.path.join(output_dir, 'scheduler.bin'))
                     torch.save(args, os.path.join(output_dir, 'training_args.bin'))
                     torch.save(global_step, os.path.join(args.output_dir, 'global_step.bin'))
+                    torch.save(nb_tr_steps, os.path.join(args.output_dir, 'nb_tr_steps.bin'))
+                    torch.save(nb_tr_examples, os.path.join(args.output_dir, 'nb_tr_examples.bin'))
 
                     logger.info("Saving model checkpoint, optimizer, global_step to %s", output_dir)
                     if (global_step/args.save_steps) > args.max_save_checkpoints:
