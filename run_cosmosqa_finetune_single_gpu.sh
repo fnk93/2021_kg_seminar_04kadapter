@@ -2,9 +2,9 @@
 # Licensed under the MIT license.
 
 # best results for F + L
-batch=4
+batch=64
 # batch=8
-accu=16
+accu=32
 lr=1e-5
 GPU="0"
 warmup=0
