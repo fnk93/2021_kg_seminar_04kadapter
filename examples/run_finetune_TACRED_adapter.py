@@ -680,9 +680,9 @@ class TACREDModel(nn.Module):
             self.adapter_num += 1
 
         if self.args.fusion_mode == 'concat':
-                self.task_dense_lin = nn.Linear(self.config.hidden_size + self.config.hidden_size, self.config.hidden_size)
-                self.task_dense_fac = nn.Linear(self.config.hidden_size + self.config.hidden_size, self.config.hidden_size)
-                self.task_dense = nn.Linear(self.config.hidden_size + self.config.hidden_size, self.config.hidden_size)
+            self.task_dense_lin = nn.Linear(self.config.hidden_size + self.config.hidden_size, self.config.hidden_size)
+            self.task_dense_fac = nn.Linear(self.config.hidden_size + self.config.hidden_size, self.config.hidden_size)
+            self.task_dense = nn.Linear(self.config.hidden_size + self.config.hidden_size, self.config.hidden_size)
 
         # TODO: fix for other datasets using this file
         if self.args.task_name == 'tacred':
