@@ -461,7 +461,8 @@ class AdapterModel(nn.Module):
             if self.adapter_skip_layers >= 1:
                 if adapter_hidden_states_count % self.adapter_skip_layers == 0:
                     hidden_states_last = hidden_states_last + adapter_hidden_states[int(adapter_hidden_states_count/self.adapter_skip_layers)]
-
+        self.args.a_rate = 1
+        self.args.b_rate = 1
         if self.args.fusion_mode == 'add':
             task_features = self.args.a_rate * sequence_output+self.args.b_rate * hidden_states_last
         elif self.args.fusion_mode == 'concat':
