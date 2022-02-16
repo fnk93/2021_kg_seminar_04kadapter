@@ -47,7 +47,7 @@ fac_adap="./pretrained_models/fac-adapter/pytorch_model.bin"
 lin_adap=""
 comment="f-adapter"
 CUDA_VISIBLE_DEVICES=$GPU
-python examples/run_finetune_cosmosqa_adapter_bak.py \
+python examples/run_finetune_cosmosqa_adapter_bak_bak.py \
     --model_type roberta-large \
     --model_name_or_path roberta-large \
     --do_train \
@@ -80,7 +80,7 @@ fac_adap=""
 lin_adap="./pretrained_models/lin-adapter/pytorch_model.bin"
 comment="l-adapter"
 CUDA_VISIBLE_DEVICES=$GPU
-python examples/run_finetune_cosmosqa_adapter_bak.py \
+python examples/run_finetune_cosmosqa_adapter_bak_bak.py \
     --model_type roberta-large \
     --model_name_or_path roberta-large \
     --do_train \
