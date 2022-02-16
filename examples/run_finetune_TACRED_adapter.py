@@ -685,13 +685,13 @@ class TACREDModel(nn.Module):
                 self.task_dense = nn.Linear(self.config.hidden_size + self.config.hidden_size, self.config.hidden_size)
 
         # TODO: fix for other datasets using this file
-        if self.args.task == 'tacred':
+        if self.args.task_name == 'tacred':
             self.num_labels = 42
-        elif self.args.task == 'litwd':
+        elif self.args.task_name == 'litwd':
             self.num_labels = 280
-        elif self.args.task == 'wn18rr':
+        elif self.args.task_name == 'wn18rr':
             self.num_labels = 11
-        elif self.args.task == 'fb15k':
+        elif self.args.task_name == 'fb15k':
             self.num_labels = 237
 
         self.dense = nn.Linear(self.config.hidden_size * 2, self.config.hidden_size)
