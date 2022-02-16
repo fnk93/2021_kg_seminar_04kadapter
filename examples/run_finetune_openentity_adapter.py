@@ -396,7 +396,7 @@ def evaluate(args, model, tokenizer, prefix="", epoch=0, global_step=0):
             save_result = str(results)
 
             save_results.append(save_result)
-            result_file = open(os.path.join(args.output_dir, args.my_model_name + '_result.txt'), 'w')
+            # result_file = open(os.path.join(args.output_dir, args.my_model_name + '_result.txt'), 'w')
             if os.path.exists(os.path.join(args.output_dir, args.my_model_name + '_result.txt')):
                 result_file = open(os.path.join(args.output_dir, args.my_model_name + '_result.txt'), 'a')
                 # for line in save_results:
