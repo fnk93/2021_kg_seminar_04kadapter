@@ -318,7 +318,7 @@ def train(args, train_dataset, model, tokenizer):
             # train_iterator.close()
             break
         model = (pretrained_model,tacred_model)
-        results = evaluate(args, model, tokenizer, prefix="")
+        results = evaluate(args, model, tokenizer, prefix="", epoch=epoch, global_step=global_step)
         # for key, value in results.items():
         #     tb_writer.add_scalar('eval_{}'.format(key), value, global_step)
 
@@ -328,7 +328,7 @@ def train(args, train_dataset, model, tokenizer):
     return global_step, tr_loss / global_step
 
 save_results=[]
-def evaluate(args, model, tokenizer, prefix=""):
+def evaluate(args, model, tokenizer, prefix="", epoch=0, global_step=0):
     pretrained_model = model[0]
     tacred_model = model[1]
     # Loop to handle MNLI double evaluation (matched, mis-matched)
@@ -413,10 +413,12 @@ def evaluate(args, model, tokenizer, prefix=""):
             if os.path.exists(os.path.join(args.output_dir, args.my_model_name + '_result.txt')):
                 result_file = open(os.path.join(args.output_dir, args.my_model_name + '_result.txt'), 'a')
                 # for line in save_results:
+                result_file.write('Epoch: {0}, Step: {1}\n'.format(epoch, global_step))
                 result_file.write(str(results) + '\n')
                 result_file.close()
             else:
                 result_file = open(os.path.join(args.output_dir, args.my_model_name + '_result.txt'), 'w')
+                result_file.write('Epoch: {0}, Step: {1}\n'.format(epoch, global_step))
                 for line in save_results:
                     result_file.write(str(line) + '\n')
                 result_file.close()

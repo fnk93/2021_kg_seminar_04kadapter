@@ -216,7 +216,7 @@ def train(args, train_dataset, model, tokenizer):
     # train_iterator = trange(int(args.num_train_epochs), desc="Epoch", disable=args.local_rank not in [-1, 0])
     train_iterator = trange(start_epoch, int(args.num_train_epochs), desc="Epoch", disable=args.local_rank not in [-1, 0])
     set_seed(args)  # Added here for reproductibility (even between python 2 and 3)
-    for _ in train_iterator:
+    for epoch in train_iterator:
         epoch_iterator = tqdm(train_dataloader, desc="Iteration", disable=args.local_rank not in [-1, 0])
         for step, batch in enumerate(epoch_iterator):
             # if step>10:
@@ -309,7 +309,7 @@ def train(args, train_dataset, model, tokenizer):
         model = (pretrained_model, et_model)
         logger.info("***** evaluating *****")
 
-        results = evaluate(args, model, tokenizer, prefix="")
+        results = evaluate(args, model, tokenizer, prefix="", epoch=epoch, global_step=global_step)
         # for key, value in results.items():
         #     tb_writer.add_scalar('eval_{}'.format(key), value, global_step)
     #
@@ -319,7 +319,7 @@ def train(args, train_dataset, model, tokenizer):
     return global_step, tr_loss / global_step
 
 save_results=[]
-def evaluate(args, model, tokenizer, prefix=""):
+def evaluate(args, model, tokenizer, prefix="", epoch=0, global_step=0):
     pretrained_model = model[0]
     et_model = model[1]
     # Loop to handle MNLI double evaluation (matched, mis-matched)
@@ -397,9 +397,18 @@ def evaluate(args, model, tokenizer, prefix=""):
 
             save_results.append(save_result)
             result_file = open(os.path.join(args.output_dir, args.my_model_name + '_result.txt'), 'w')
-            for line in save_results:
-                result_file.write(str(dataset_type)+':'+ str(line) + '\n')
-            result_file.close()
+            if os.path.exists(os.path.join(args.output_dir, args.my_model_name + '_result.txt')):
+                result_file = open(os.path.join(args.output_dir, args.my_model_name + '_result.txt'), 'a')
+                # for line in save_results:
+                result_file.write('Epoch: {0}, Step: {1}\n'.format(epoch, global_step))
+                result_file.write(str(results) + '\n')
+                result_file.close()
+            else:
+                result_file = open(os.path.join(args.output_dir, args.my_model_name + '_result.txt'), 'w')
+                result_file.write('Epoch: {0}, Step: {1}\n'.format(epoch, global_step))
+                for line in save_results:
+                    result_file.write(str(line) + '\n')
+                result_file.close()
             model_type = 'Unkn'
             if args.meta_fac_adaptermodel and args.meta_lin_adaptermodel:
                 model_type = 'F+L'
