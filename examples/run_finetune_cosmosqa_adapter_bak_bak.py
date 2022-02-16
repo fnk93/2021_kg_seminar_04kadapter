@@ -902,11 +902,6 @@ def main():
         logger.info("  Batch size = %d", args.train_batch_size)
         logger.info("  Num steps = %d", num_train_optimization_steps)
 
-        pretrained_model.zero_grad()
-        cosmosqa_model.zero_grad()
-
-        set_seed(args)
-
         best_acc = 0
         if args.freeze_bert:
             pretrained_model.eval()
@@ -925,8 +920,7 @@ def main():
             # loss = model(input_ids=input_ids, token_type_ids=segment_ids, attention_mask=input_mask, labels=label_ids)
             pretrained_model_outputs = pretrained_model(input_ids=input_ids, token_type_ids=None, attention_mask=input_mask, labels=label_ids)
             outputs = cosmosqa_model(pretrained_model_outputs,input_ids=input_ids, token_type_ids=None, attention_mask=input_mask, labels=label_ids)
-            # outputs = outputs.detach().cpu().numpy()
-            # label_ids = label_ids.to('cpu').numpy()
+
             loss = outputs  # model outputs are always tuple in pytorch-transformers (see doc)
 
             # loss = model(input_ids=input_ids, token_type_ids=None, attention_mask=input_mask, labels=label_ids)
@@ -937,19 +931,16 @@ def main():
             if args.gradient_accumulation_steps > 1:
                 loss = loss / args.gradient_accumulation_steps
             # print(loss)
-
-            if args.fp16:
-                optimizer.backward(loss)
-            else:
-                loss.backward()
-                torch.nn.utils.clip_grad_norm_(pretrained_model.parameters(), args.max_grad_norm)
-                torch.nn.utils.clip_grad_norm_(cosmosqa_model.parameters(), args.max_grad_norm)
-
             tr_loss += loss.item()
             train_loss = round(tr_loss * args.gradient_accumulation_steps / (nb_tr_steps + 1), 4)
             bar.set_description("loss {}".format(train_loss))
             nb_tr_examples += input_ids.size(0)
             nb_tr_steps += 1
+
+            if args.fp16:
+                optimizer.backward(loss)
+            else:
+                loss.backward()
 
             if (nb_tr_steps + 1) % args.gradient_accumulation_steps == 0:
                 if args.fp16:
@@ -958,11 +949,9 @@ def main():
                     lr_this_step = args.learning_rate * warmup_linear.get_lr(global_step, args.warmup_proportion)
                     for param_group in optimizer.param_groups:
                         param_group['lr'] = lr_this_step
-                optimizer.step()
                 scheduler.step()
-                # optimizer.zero_grad()
-                pretrained_model.zero_grad()
-                cosmosqa_model.zero_grad()
+                optimizer.step()
+                optimizer.zero_grad()
                 global_step += 1
                 eval_flag = True
 
