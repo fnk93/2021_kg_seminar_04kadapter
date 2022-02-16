@@ -942,6 +942,8 @@ def main():
                 optimizer.backward(loss)
             else:
                 loss.backward()
+                torch.nn.utils.clip_grad_norm_(pretrained_model.parameters(), args.max_grad_norm)
+                torch.nn.utils.clip_grad_norm_(cosmosqa_model.parameters(), args.max_grad_norm)
 
             if (nb_tr_steps + 1) % args.gradient_accumulation_steps == 0:
                 if args.fp16:
@@ -950,9 +952,9 @@ def main():
                     lr_this_step = args.learning_rate * warmup_linear.get_lr(global_step, args.warmup_proportion)
                     for param_group in optimizer.param_groups:
                         param_group['lr'] = lr_this_step
-                scheduler.step()
                 optimizer.step()
-                optimizer.zero_grad()
+                scheduler.step()
+                # optimizer.zero_grad()
                 pretrained_model.zero_grad()
                 cosmosqa_model.zero_grad()
                 global_step += 1
