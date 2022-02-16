@@ -919,7 +919,8 @@ def main():
             # loss = model(input_ids=input_ids, token_type_ids=segment_ids, attention_mask=input_mask, labels=label_ids)
             pretrained_model_outputs = pretrained_model(input_ids=input_ids, token_type_ids=None, attention_mask=input_mask, labels=label_ids)
             outputs = cosmosqa_model(pretrained_model_outputs,input_ids=input_ids, token_type_ids=None, attention_mask=input_mask, labels=label_ids)
-            outputs = outputs.detach().cpu().numpy()
+            # outputs = outputs.detach().cpu().numpy()
+            label_ids = label_ids.to('cpu').numpy()
             loss = outputs  # model outputs are always tuple in pytorch-transformers (see doc)
 
             # loss = model(input_ids=input_ids, token_type_ids=None, attention_mask=input_mask, labels=label_ids)
