@@ -1186,6 +1186,7 @@ def main():
 
                     output_eval_file = os.path.join(args.output_dir, "eval_results.txt")
                     with open(output_eval_file, "a", encoding='utf8') as writer:
+                        writer.write('Step: {0}\n'.format(global_step))
                         for key in sorted(result.keys()):
                             logger.info("  %s = %s", key, str(result[key]))
                             writer.write("%s = %s\n" % (key, str(result[key])))
