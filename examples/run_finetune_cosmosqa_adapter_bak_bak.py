@@ -902,6 +902,11 @@ def main():
         logger.info("  Batch size = %d", args.train_batch_size)
         logger.info("  Num steps = %d", num_train_optimization_steps)
 
+        pretrained_model.zero_grad()
+        cosmosqa_model.zero_grad()
+
+        set_seed(args)
+
         best_acc = 0
         if args.freeze_bert:
             pretrained_model.eval()
@@ -932,11 +937,6 @@ def main():
             if args.gradient_accumulation_steps > 1:
                 loss = loss / args.gradient_accumulation_steps
             # print(loss)
-            tr_loss += loss.item()
-            train_loss = round(tr_loss * args.gradient_accumulation_steps / (nb_tr_steps + 1), 4)
-            bar.set_description("loss {}".format(train_loss))
-            nb_tr_examples += input_ids.size(0)
-            nb_tr_steps += 1
 
             if args.fp16:
                 optimizer.backward(loss)
@@ -944,6 +944,12 @@ def main():
                 loss.backward()
                 torch.nn.utils.clip_grad_norm_(pretrained_model.parameters(), args.max_grad_norm)
                 torch.nn.utils.clip_grad_norm_(cosmosqa_model.parameters(), args.max_grad_norm)
+
+            tr_loss += loss.item()
+            train_loss = round(tr_loss * args.gradient_accumulation_steps / (nb_tr_steps + 1), 4)
+            bar.set_description("loss {}".format(train_loss))
+            nb_tr_examples += input_ids.size(0)
+            nb_tr_steps += 1
 
             if (nb_tr_steps + 1) % args.gradient_accumulation_steps == 0:
                 if args.fp16:
