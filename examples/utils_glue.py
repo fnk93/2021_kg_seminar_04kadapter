@@ -347,6 +347,7 @@ class TACREDProcessor(DataProcessor):
 
 
 relations_litwd = [
+    'no_relation',
     'currency',
     'family',
     'site of astronomical discovery',
@@ -644,6 +645,7 @@ class FB15KProcessor(TACREDProcessor):
         relations_fb15k = []
         with open(pathlib.Path('data/') / 'fb15k-relations.json', 'r') as fr:
             relations_fb15k = json.load(fr)
+        relations_fb15k.insert(0, 'no_relation')
         return relations_fb15k
 
 
@@ -654,6 +656,7 @@ class WN18RRProcessor(TACREDProcessor):
         relations_wn18rr = []
         with open(pathlib.Path('data/') / 'wn18rr-relations.json', 'r') as fr:
             relations_wn18rr = json.load(fr)
+        relations_wn18rr.insert(0, 'no_relation')
         return relations_wn18rr
 
 
@@ -1045,12 +1048,12 @@ def acc_and_f1(preds, labels):
     }
 
 
-def micro_f1_tacred(preds, labels):
+def micro_f1_tacred(preds, labels, no_rel_id=28):
     correct_by_relation = Counter()
     guessed_by_relation = Counter()
     gold_by_relation = Counter()
 
-    NO_RELATION = 28
+    NO_RELATION = no_rel_id
     for guess, gold in zip(preds, labels):
         if gold == NO_RELATION and guess == NO_RELATION:
             pass
@@ -1204,8 +1207,14 @@ def compute_metrics(task_name, preds, labels):
     assert len(preds) == len(labels)
     if task_name == 'entity_type':
         return entity_typing_accuracy(preds, labels)
-    elif task_name in ['tacred', 'litwd', 'fb15k', 'wn18rr']:
+    elif task_name == 'tacred':
         return micro_f1_tacred(preds, labels)
+    elif task_name == 'litwd':
+        return micro_f1_tacred(preds, labels, no_rel_id=0)
+    elif task_name == 'fb15k':
+        return micro_f1_tacred(preds, labels, no_rel_id=0)
+    elif task_name == 'wn18rr':
+        return micro_f1_tacred(preds, labels, no_rel_id=0)
     elif task_name == 'semeval':
         return macro_f1_semeval(preds, labels)
     else:
@@ -1236,8 +1245,8 @@ GLUE_TASKS_NUM_LABELS = {
     "entity_type": 9,
     "entity_type_kg": 9,
     "tacred": 42,
-    "litwd": 280,
-    "fb15k": 237,
-    "wn18rr": 11,
+    "litwd": 281,
+    "fb15k": 238,
+    "wn18rr": 12,
     "semeval": 19,
 }
