@@ -532,9 +532,16 @@ class COSMOSQAModel(nn.Module):
                 task_features = task_features + lin_adapter_outputs
         elif self.args.fusion_mode == 'concat':
             combine_features = pretrained_model_last_hidden_states
-            fac_features = self.task_dense_fac(torch.cat([combine_features, fac_adapter_outputs], dim=2))
-            lin_features = self.task_dense_lin(torch.cat([combine_features, lin_adapter_outputs], dim=2))
-            task_features = self.task_dense(torch.cat([fac_features, lin_features], dim=2))
+            if self.args.meta_fac_adaptermodel:
+                fac_features = self.task_dense_fac(torch.cat([combine_features, fac_adapter_outputs], dim=2))
+                task_features = fac_features
+            if self.args.meta_lin_adaptermodel:
+                lin_features = self.task_dense_lin(torch.cat([combine_features, lin_adapter_outputs], dim=2))
+                task_features = lin_features
+            if (self.fac_adapter is not None) and (self.lin_adapter is not None):
+                task_features = self.task_dense(torch.cat([fac_features, lin_features], dim=2))
+            elif (self.fac_adapter is None) and (self.lin_adapter is None):
+                task_features = combine_features
 
         sequence_output = self.dropout(task_features)
         logits = self.classifier(sequence_output[:, 0, :].squeeze(dim=1))
@@ -1186,6 +1193,7 @@ def main():
 
                     output_eval_file = os.path.join(args.output_dir, "eval_results.txt")
                     with open(output_eval_file, "a", encoding='utf8') as writer:
+                        writer.write('Step: {0}\n'.format(global_step))
                         for key in sorted(result.keys()):
                             logger.info("  %s = %s", key, str(result[key]))
                             writer.write("%s = %s\n" % (key, str(result[key])))

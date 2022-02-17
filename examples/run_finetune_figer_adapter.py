@@ -288,14 +288,14 @@ def train(args, train_dataset, model, tokenizer):
 
                 if args.local_rank == -1 and args.evaluate_during_training and global_step %args.eval_steps== 0:  # Only evaluate when single GPU otherwise metrics may not average well
                     model = (pretrained_model, figer_model)
-                    results = evaluate(args, model, tokenizer)
+                    results = evaluate(args, model, tokenizer, epoch=epoch, global_step=global_step)
 
             if args.max_steps > 0 and global_step > args.max_steps:
                 break
 
         if args.max_steps > 0 and global_step > args.max_steps:
             break
-        results = evaluate(args, model, tokenizer, prefix="")
+        results = evaluate(args, model, tokenizer, prefix="", epoch=epoch, global_step=global_step)
 
 
     return global_step, tr_loss / global_step
@@ -317,7 +317,7 @@ def accuracy(out, l):
         cnt += set(yy1) == set(yy2)
     return cnt, y1, y2
 save_results=[]
-def evaluate(args, model, tokenizer, prefix=""):
+def evaluate(args, model, tokenizer, prefix="", epoch=0, global_step=0):
     pretrained_model = model[0]
     figer_model = model[1]
     # Loop to handle MNLI double evaluation (matched, mis-matched)
@@ -452,10 +452,12 @@ def evaluate(args, model, tokenizer, prefix=""):
             if os.path.exists(os.path.join(args.output_dir, args.my_model_name + '_result.txt')):
                 result_file = open(os.path.join(args.output_dir, args.my_model_name + '_result.txt'), 'a')
                 # for line in save_results:
+                result_file.write('Epoch: {0}, Step: {1}\n'.format(epoch, global_step))
                 result_file.write(str(results) + '\n')
                 result_file.close()
             else:
                 result_file = open(os.path.join(args.output_dir, args.my_model_name + '_result.txt'), 'w')
+                result_file.write('Epoch: {0}, Step: {1}\n'.format(epoch, global_step))
                 for line in save_results:
                     result_file.write(str(line) + '\n')
                 result_file.close()

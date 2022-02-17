@@ -4,7 +4,7 @@
 # best results for F + L
 batch=8
 # batch=8
-accu=1
+accu=4
 lr=1e-5
 GPU="0"
 warmup=0
@@ -14,7 +14,7 @@ lin_adap="./pretrained_models/lin-adapter/pytorch_model.bin"
 comment="fl-adapter"
 dataset=data/cosmosQA
 CUDA_VISIBLE_DEVICES=$GPU
-python examples/run_finetune_cosmosqa_adapter_bak.py \
+python examples/run_finetune_cosmosqa_adapter_bak_bak.py \
     --model_type roberta-large \
     --model_name_or_path roberta-large \
     --do_train \
@@ -41,15 +41,13 @@ python examples/run_finetune_cosmosqa_adapter_bak.py \
     --adapter_list "0,11,22" \
     --adapter_skip_layers 0 \
     --meta_fac_adaptermodel=$fac_adap \
-    --meta_lin_adaptermodel=$lin_adap \
-    --save_to_s3 \
-    --read_from_s3 \
+    --meta_lin_adaptermodel=$lin_adap
 
 fac_adap="./pretrained_models/fac-adapter/pytorch_model.bin"
 lin_adap=""
 comment="f-adapter"
 CUDA_VISIBLE_DEVICES=$GPU
-python examples/run_finetune_cosmosqa_adapter_bak.py \
+python examples/run_finetune_cosmosqa_adapter_bak_bak.py \
     --model_type roberta-large \
     --model_name_or_path roberta-large \
     --do_train \
@@ -76,15 +74,13 @@ python examples/run_finetune_cosmosqa_adapter_bak.py \
     --adapter_list "0,11,22" \
     --adapter_skip_layers 0 \
     --meta_fac_adaptermodel=$fac_adap \
-    --meta_lin_adaptermodel=$lin_adap \
-    --save_to_s3 \
-    --read_from_s3
+    --meta_lin_adaptermodel=$lin_adap
 
 fac_adap=""
 lin_adap="./pretrained_models/lin-adapter/pytorch_model.bin"
 comment="l-adapter"
 CUDA_VISIBLE_DEVICES=$GPU
-python examples/run_finetune_cosmosqa_adapter_bak.py \
+python examples/run_finetune_cosmosqa_adapter_bak_bak.py \
     --model_type roberta-large \
     --model_name_or_path roberta-large \
     --do_train \
@@ -111,6 +107,4 @@ python examples/run_finetune_cosmosqa_adapter_bak.py \
     --adapter_list "0,11,22" \
     --adapter_skip_layers 0 \
     --meta_fac_adaptermodel=$fac_adap \
-    --meta_lin_adaptermodel=$lin_adap \
-    --save_to_s3 \
-    --read_from_s3
+    --meta_lin_adaptermodel=$lin_adap

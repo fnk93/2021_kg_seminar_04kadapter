@@ -26,7 +26,6 @@ import logging
 import os
 import random
 
-import s3fs
 import numpy as np
 import torch
 import torch.nn as nn
@@ -121,11 +120,11 @@ class InputFeatures(object):
         ]
         self.label = label
 
-# TODO: plug in datasets.load_dataset('cosmos_qa') if no data in folder
+
 def read_examples_origin(input_file, is_training):
     cont = 0
     examples = []
-    with open(input_file, encoding='utf-8') as f:
+    with open(input_file) as f:
         for line in f:
             line = json.loads(line.strip())
 
@@ -400,7 +399,6 @@ class AdapterModel(nn.Module):
         self.config = pretrained_model_config
         self.args = args
         self.adapter_size = args.adapter_size
-        self.directml = args.directml
 
         class AdapterConfig:
             project_hidden_size: int = self.config.hidden_size
@@ -451,13 +449,7 @@ class AdapterModel(nn.Module):
         # pooler_output = outputs[1]
         hidden_states = outputs[2]
         num = len(hidden_states)
-        # try:
         hidden_states_last = torch.zeros(sequence_output.size()).to('cuda')
-        # except:
-        #     if self.directml:
-        #         hidden_states_last = torch.zeros(sequence_output.size()).to('dml')
-        #     else:
-        #         hidden_states_last = torch.zeros(sequence_output.size())
 
         adapter_hidden_states = []
         adapter_hidden_states_count = 0
@@ -469,7 +461,8 @@ class AdapterModel(nn.Module):
             if self.adapter_skip_layers >= 1:
                 if adapter_hidden_states_count % self.adapter_skip_layers == 0:
                     hidden_states_last = hidden_states_last + adapter_hidden_states[int(adapter_hidden_states_count/self.adapter_skip_layers)]
-
+        self.args.a_rate = 1
+        self.args.b_rate = 1
         if self.args.fusion_mode == 'add':
             task_features = self.args.a_rate * sequence_output+self.args.b_rate * hidden_states_last
         elif self.args.fusion_mode == 'concat':
@@ -539,16 +532,9 @@ class COSMOSQAModel(nn.Module):
                 task_features = task_features + lin_adapter_outputs
         elif self.args.fusion_mode == 'concat':
             combine_features = pretrained_model_last_hidden_states
-            if self.args.meta_fac_adaptermodel:
-                fac_features = self.task_dense_fac(torch.cat([combine_features, fac_adapter_outputs], dim=2))
-                task_features = fac_features
-            if self.args.meta_lin_adaptermodel:
-                lin_features = self.task_dense_lin(torch.cat([combine_features, lin_adapter_outputs], dim=2))
-                task_features = lin_features
-            if (self.fac_adapter is not None) and (self.lin_adapter is not None):
-                task_features = self.task_dense(torch.cat([fac_features, lin_features], dim=2))
-            elif (self.fac_adapter is None) and (self.lin_adapter is None):
-                task_features = combine_features
+            fac_features = self.task_dense_fac(torch.cat([combine_features, fac_adapter_outputs], dim=2))
+            lin_features = self.task_dense_lin(torch.cat([combine_features, lin_adapter_outputs], dim=2))
+            task_features = self.task_dense(torch.cat([fac_features, lin_features], dim=2))
 
         sequence_output = self.dropout(task_features)
         logits = self.classifier(sequence_output[:, 0, :].squeeze(dim=1))
@@ -630,11 +616,6 @@ def main():
     parser.add_argument("--adapter_skip_layers", default=3, type=int,
                         help="The skip_layers of adapter according to bert layers")
 
-    parser.add_argument("--restore", action='store_true', default=False, help="Whether restore from the last checkpoint, is nochenckpoints, start from scartch")
-    parser.add_argument("--save_to_s3", action='store_true', default=False, help="Whether to save results to s3://kadapter bucket")
-    parser.add_argument("--read_from_s3", action='store_true', default=False, help="Whether to read dataset from s3://kadapter bucket")
-    parser.add_argument("--directml", action='store_true', default=False, help="Whether to use DirectML or not")
-
     parser.add_argument('--meta_fac_adaptermodel', default='',type=str, help='the pretrained factual adapter model')
     parser.add_argument('--meta_et_adaptermodel', default='',type=str, help='the pretrained entity typing adapter model')
     parser.add_argument('--meta_lin_adaptermodel', default='', type=str, help='the pretrained linguistic adapter model')
@@ -690,19 +671,12 @@ def main():
                         help="")
     parser.add_argument("--warmup_steps", default=0, type=int,
                         help="Linear warmup over warmup_steps.")
-    # No information given on these
-    parser.add_argument("--a_rate", default=1, type=int,
-                        help="")
-    parser.add_argument("--b_rate", default=1, type=int,
-                        help="")
 
 
     parser.add_argument('--logging_steps', type=int, default=10,
                         help="Log every X updates steps.")
     parser.add_argument('--save_steps', type=int, default=50,
                         help="Save checkpoint every X updates steps.")
-    parser.add_argument('--max_save_checkpoints', type=int, default=500,
-                        help="The max amounts of checkpoint saving. Bigger than it will delete the former checkpoints")
     parser.add_argument("--eval_all_checkpoints", action='store_true',
                         help="Evaluate all checkpoints starting with the same prefix as model_name ending and ending with step number")
     parser.add_argument("--no_cuda", action='store_true',
@@ -724,13 +698,8 @@ def main():
     parser.add_argument('--server_ip', type=str, default='', help="For distant debugging.")
     parser.add_argument('--server_port', type=str, default='', help="For distant debugging.")
     parser.add_argument('--preprocess_type', type=str, default='', help="How to process the input")
-    parser.add_argument('--loss_scale',
-                        type=float, default=0,
-                        help="Loss scaling to improve fp16 numeric stability. Only used when fp16 set to True.\n"
-                             "0 (default value): dynamic loss scaling.\n"
-                             "Positive power of 2: static loss scaling value.\n")
     args = parser.parse_args()
-    # args = parser.parse_args()
+    args = parser.parse_args()
 
     args.adapter_list = args.adapter_list.split(',')
     args.adapter_list = [int(i) for i in args.adapter_list]
@@ -738,8 +707,6 @@ def main():
     name_prefix = 'batch-'+str(args.per_gpu_train_batch_size)+'_'+'lr-'+str(args.learning_rate)+'_'+'warmup-'+str(args.warmup_steps)+'_'+'epoch-'+str(args.num_train_epochs)+'_'+str(args.comment)
     args.my_model_name = args.task_name+'_'+name_prefix
     args.output_dir = os.path.join(args.output_dir, args.my_model_name)
-    if args.save_to_s3:
-        s3 = s3fs.S3FileSystem(anon=False)
 
     # if os.path.exists(args.output_dir) and os.listdir(args.output_dir) and args.do_train and not args.overwrite_output_dir:
     #     raise ValueError("Output directory ({}) already exists and is not empty. Use --overwrite_output_dir to overcome.".format(args.output_dir))
@@ -754,28 +721,13 @@ def main():
 
     # Setup CUDA, GPU & distributed training
     if args.local_rank == -1 or args.no_cuda:
-        if args.directml:
-            print('Using DirectML: {0}'.format(args.directml))
-            # device = torch.device('directml')
-            device = torch.device('dml')
-            args.n_gpu = 1
-            # args.n_gpu = 
-        else:
-            print('Not using DirectML')
-            device = torch.device("cuda" if torch.cuda.is_available() and not args.no_cuda else "cpu")
-            args.n_gpu = torch.cuda.device_count()
+        device = torch.device("cuda" if torch.cuda.is_available() and not args.no_cuda else "cpu")
+        args.n_gpu = torch.cuda.device_count()
     else:  # Initializes the distributed backend which will take care of sychronizing nodes/GPUs
-        if args.directml:
-            # torch.cuda.set_device(args.local_rank)
-            # to
-            device = torch.device("dml", args.local_rank)
-            torch.distributed.init_process_group(backend='nccl')
-            args.n_gpu = 1
-        else:
-            torch.cuda.set_device(args.local_rank)
-            device = torch.device("cuda", args.local_rank)
-            torch.distributed.init_process_group(backend='nccl')
-            args.n_gpu = 1
+        torch.cuda.set_device(args.local_rank)
+        device = torch.device("cuda", args.local_rank)
+        torch.distributed.init_process_group(backend='nccl')
+        args.n_gpu = 1
     args.device = device
 
     # Setup logging
@@ -784,8 +736,6 @@ def main():
                         level = logging.INFO if args.local_rank in [-1, 0] else logging.WARN)
     logger.warning("Process rank: %s, device: %s, n_gpu: %s, distributed training: %s, 16-bits training: %s",
                     args.local_rank, device, args.n_gpu, bool(args.local_rank != -1), args.fp16)
-
-    # args.train_batch_size = int(args.train_batch_size / args.gradient_accumulation_steps)
 
     # Set seed
     set_seed(args)
@@ -862,89 +812,9 @@ def main():
 
     logger.info("Training/evaluation parameters %s", args)
 
-    read_examples_dict = {
-        'read_examples_origin': read_examples_origin,
-        'read_examples_add_evidence': read_examples_add_evidence
-    }
-    convert_examples_to_features_dict = {
-        'read_examples_origin': convert_examples_to_features,
-        'read_examples_add_evidence': convert_examples_to_features,
-    }
-
-
-    train_examples = read_examples_dict[args.preprocess_type](os.path.join(args.data_dir, 'train.jsonl'),
-                                                                  is_training=True)
-    train_features = convert_examples_to_features_dict[args.preprocess_type](
-        train_examples, tokenizer, args.max_seq_length, True)
-    all_input_ids = torch.tensor(select_field(train_features, 'input_ids'), dtype=torch.long)
-    all_input_mask = torch.tensor(select_field(train_features, 'input_mask'), dtype=torch.long)
-    all_segment_ids = torch.tensor(select_field(train_features, 'segment_ids'), dtype=torch.long)
-    all_label = torch.tensor([f.label for f in train_features], dtype=torch.long)
-    train_data = TensorDataset(all_input_ids, all_input_mask, all_segment_ids, all_label)
-
-    args.train_batch_size = args.per_gpu_train_batch_size * max(1, args.n_gpu)
-    args.eval_batch_size = args.per_gpu_eval_batch_size * max(1, args.n_gpu)
-
-    if args.local_rank == -1:
-        train_sampler = RandomSampler(train_data)
-    else:
-        train_sampler = DistributedSampler(train_data)
-    train_dataloader = DataLoader(train_data, sampler=train_sampler,
-                                    batch_size=args.train_batch_size // args.gradient_accumulation_steps)
-
-    if args.train_steps > 0:
-        num_train_optimization_steps = args.train_steps
-        args.num_train_epochs = int(args.train_steps // (len(train_dataloader) // args.gradient_accumulation_steps) + 1)
-        t_total = args.train_steps
-    else:
-        num_train_optimization_steps = int(len(train_dataloader) // args.gradient_accumulation_steps * args.num_train_epochs)
-        num_train_steps = int(len(train_dataloader) / args.gradient_accumulation_steps * args.num_train_epochs)
-        t_total = num_train_steps
-    # Prepare optimizer
-    #
-    # param_optimizer = list(model.named_parameters())
-    #
-    # # hack to remove pooler, which is not used
-    # # thus it produce None grad that break apex
-    # param_optimizer = [n for n in param_optimizer]
-
-    no_decay = ['bias', 'LayerNorm.bias', 'LayerNorm.weight']
-    if args.freeze_bert:
-        optimizer_grouped_parameters = [
-            {'params': [p for n, p in cosmosqa_model.named_parameters() if not any(nd in n for nd in no_decay)],
-                'weight_decay': args.weight_decay},
-            {'params': [p for n, p in cosmosqa_model.named_parameters() if any(nd in n for nd in no_decay)],
-                'weight_decay': 0.0}
-        ]
-    else:
-        optimizer_grouped_parameters = [
-            {'params': [p for n, p in cosmosqa_model.named_parameters() if not any(nd in n for nd in no_decay)],
-                'weight_decay': args.weight_decay},
-            {'params': [p for n, p in cosmosqa_model.named_parameters() if any(nd in n for nd in no_decay)],
-                'weight_decay': 0.0},
-            {'params': [p for n, p in pretrained_model.named_parameters() if not any(nd in n for nd in no_decay)],
-                'weight_decay': args.weight_decay},
-            {'params': [p for n, p in pretrained_model.named_parameters() if any(nd in n for nd in no_decay)],
-                'weight_decay': 0.0}
-        ]
-
-    optimizer = AdamW(optimizer_grouped_parameters, lr=args.learning_rate, eps=args.adam_epsilon)
-    scheduler = WarmupLinearSchedule(optimizer, warmup_steps=args.warmup_steps,
-                                        t_total=t_total)
-
 
     # if args.fp16:
     #     model.half()
-    if args.fp16:
-        try:
-            from apex import amp
-        except ImportError:
-            raise ImportError("Please install apex from https://www.github.com/nvidia/apex to use fp16 training.")
-        if args.freeze_bert:
-            cosmosqa_model, optimizer = amp.initialize(cosmosqa_model, optimizer, opt_level=args.fp16_opt_level)
-        else:
-            cosmosqa_model, optimizer = amp.initialize(cosmosqa_model, optimizer, opt_level=args.fp16_opt_level)
-            pretrained_model, optimizer = amp.initialize(pretrained_model, optimizer, opt_level=args.fp16_opt_level)
     if args.local_rank != -1:
         try:
             from apex.parallel import DistributedDataParallel as DDP
@@ -960,168 +830,140 @@ def main():
             pretrained_model = torch.nn.DataParallel(pretrained_model)
             cosmosqa_model = torch.nn.DataParallel(cosmosqa_model)
 
+    args.train_batch_size = args.per_gpu_train_batch_size * max(1, args.n_gpu)
+    args.eval_batch_size = args.per_gpu_eval_batch_size * max(1, args.n_gpu)
+
+    read_examples_dict = {
+        'read_examples_origin': read_examples_origin,
+        'read_examples_add_evidence': read_examples_add_evidence
+    }
+    convert_examples_to_features_dict = {
+        'read_examples_origin': convert_examples_to_features,
+        'read_examples_add_evidence': convert_examples_to_features,
+    }
+
     if args.do_train:
         # Prepare data loader
         # tb_writer = SummaryWriter(log_dir="runs/" + args.my_model_name)
+        train_examples = read_examples_dict[args.preprocess_type](os.path.join(args.data_dir, 'train.jsonl'),
+                                                                  is_training=True)
+        train_features = convert_examples_to_features_dict[args.preprocess_type](
+            train_examples, tokenizer, args.max_seq_length, True)
+        all_input_ids = torch.tensor(select_field(train_features, 'input_ids'), dtype=torch.long)
+        all_input_mask = torch.tensor(select_field(train_features, 'input_mask'), dtype=torch.long)
+        all_segment_ids = torch.tensor(select_field(train_features, 'segment_ids'), dtype=torch.long)
+        all_label = torch.tensor([f.label for f in train_features], dtype=torch.long)
+        train_data = TensorDataset(all_input_ids, all_input_mask, all_segment_ids, all_label)
+        if args.local_rank == -1:
+            train_sampler = RandomSampler(train_data)
+        else:
+            train_sampler = DistributedSampler(train_data)
+        train_dataloader = DataLoader(train_data, sampler=train_sampler,
+                                      batch_size=args.train_batch_size // args.gradient_accumulation_steps)
+
+        num_train_optimization_steps = args.train_steps
+
+        # Prepare optimizer
+        #
+        # param_optimizer = list(model.named_parameters())
+        #
+        # # hack to remove pooler, which is not used
+        # # thus it produce None grad that break apex
+        # param_optimizer = [n for n in param_optimizer]
+
+        no_decay = ['bias', 'LayerNorm.bias', 'LayerNorm.weight']
+        if args.freeze_bert:
+            optimizer_grouped_parameters = [
+                {'params': [p for n, p in cosmosqa_model.named_parameters() if not any(nd in n for nd in no_decay)],
+                 'weight_decay': args.weight_decay},
+                {'params': [p for n, p in cosmosqa_model.named_parameters() if any(nd in n for nd in no_decay)],
+                 'weight_decay': 0.0}
+            ]
+        else:
+            optimizer_grouped_parameters = [
+                {'params': [p for n, p in cosmosqa_model.named_parameters() if not any(nd in n for nd in no_decay)],
+                 'weight_decay': args.weight_decay},
+                {'params': [p for n, p in cosmosqa_model.named_parameters() if any(nd in n for nd in no_decay)],
+                 'weight_decay': 0.0},
+                {'params': [p for n, p in pretrained_model.named_parameters() if not any(nd in n for nd in no_decay)],
+                 'weight_decay': args.weight_decay},
+                {'params': [p for n, p in pretrained_model.named_parameters() if any(nd in n for nd in no_decay)],
+                 'weight_decay': 0.0}
+            ]
+
+        optimizer = AdamW(optimizer_grouped_parameters, lr=args.learning_rate, eps=args.adam_epsilon)
+        scheduler = WarmupLinearSchedule(optimizer, warmup_steps=args.warmup_steps,
+                                         t_total=num_train_optimization_steps)
+
         global_step = 0
 
-        # Train!
         logger.info("***** Running training *****")
-        logger.info("  Num examples = %d", len(train_dataset))
-        logger.info("  Num Epochs = %d", args.num_train_epochs)
-        logger.info("  Instantaneous batch size per GPU = %d", args.per_gpu_train_batch_size)
-        logger.info("  Total train batch size (w. parallel, distributed & accumulation) = %d",
-                    # args.train_batch_size * args.gradient_accumulation_steps * (torch.distributed.get_world_size() if args.local_rank != -1 else 1))
-                    args.train_batch_size * (torch.distributed.get_world_size() if args.local_rank != -1 else 1))
-        logger.info("  Gradient Accumulation steps = %d", args.gradient_accumulation_steps)
-        logger.info("  Total optimization steps = %d", t_total)
-
-        if args.restore:
-            logger.info("Try resume from checkpoint")
-            if os.path.exists(os.path.join(args.output_dir, 'global_step.bin')):
-                logger.info("Load last checkpoint data")
-                global_step = torch.load(os.path.join(args.output_dir, 'global_step.bin'))
-                nb_tr_steps = torch.load(os.path.join(args.output_dir, 'nb_tr_steps.bin'))
-                nb_tr_examples = torch.load(os.path.join(args.output_dir, 'nb_tr_examples.bin'))
-                output_dir = os.path.join(args.output_dir, 'checkpoint-{}'.format(global_step))
-                logger.info("Load from output_dir {}".format(output_dir))
-
-                optimizer.load_state_dict(torch.load(os.path.join(output_dir, 'optimizer.bin')))
-                scheduler.load_state_dict(torch.load(os.path.join(output_dir, 'scheduler.bin')))
-                # args = torch.load(os.path.join(output_dir, 'training_args.bin'))
-                if hasattr(pretrained_model,'module'):
-                    pretrained_model.module.load_state_dict(torch.load(os.path.join(output_dir, 'pytorch_pretrained_model.bin')))
-                else: # Take care of distributed/parallel training
-                    pretrained_model.load_state_dict(torch.load(os.path.join(output_dir, 'pytorch_pretrained_model.bin')))
-                if hasattr(cosmosqa_model,'module'):
-                    cosmosqa_model.module.load_state_dict(torch.load(os.path.join(output_dir, 'pytorch_model.bin')))
-                else:
-                    cosmosqa_model.load_state_dict(torch.load(os.path.join(output_dir, 'pytorch_model.bin')))
-
-
-                global_step += 1
-                nb_tr_steps += 1
-                start_epoch = int(global_step / len(train_dataloader))
-                start_step = global_step-start_epoch*len(train_dataloader)-1
-                logger.info("Start from global_step={} epoch={} step={}".format(global_step, start_epoch, nb_tr_steps))
-                # if args.local_rank in [-1, 0]:
-                #     tb_writer = SummaryWriter(log_dir="runs/" + args.my_model_name, purge_step=global_step)
-
-            else:
-                global_step = 0
-                start_epoch = 0
-                start_step = 0
-                # if args.local_rank in [-1, 0]:
-                #     tb_writer = SummaryWriter(log_dir="runs/" + args.my_model_name, purge_step=global_step)
-                nb_tr_examples, nb_tr_steps = 0, 0
-                logger.info("Start from scratch")
-        else:
-            global_step = 0
-            start_epoch = 0
-            start_step = 0
-            nb_tr_examples, nb_tr_steps = 0, 0
-            logger.info("Start from scratch")
+        logger.info("  Num examples = %d", len(train_examples))
+        logger.info("  Batch size = %d", args.train_batch_size)
+        logger.info("  Num steps = %d", num_train_optimization_steps)
 
         best_acc = 0
-        tr_loss, logging_loss = 0.0, 0.0
-        # nb_tr_examples, nb_tr_steps = 0, 0
-        # bar = tqdm(range(num_train_optimization_steps-nb_tr_steps), total=num_train_optimization_steps-nb_tr_steps)
-        # train_dataloader = cycle(train_dataloader)
-        eval_flag = True
         if args.freeze_bert:
             pretrained_model.eval()
         else:
             pretrained_model.train()
         cosmosqa_model.train()
-        # for step in bar:
-        for epoch in trange(start_epoch, int(args.num_train_epochs), desc="Epoch"):
-            tr_loss, logging_loss = 0.0, 0.0
-            nb_tr_examples, nb_tr_steps = 0, 0
-            for step, batch in enumerate(tqdm(train_dataloader, desc="Iteration")):
-            # batch = next(train_dataloader)
-                start = time.time()
-                if args.restore and (step < start_step):
-                    continue
-                
-                batch = tuple(t.to(args.device) for t in batch)
-                input_ids, input_mask, segment_ids, label_ids = batch
-                # loss = model(input_ids=input_ids, token_type_ids=segment_ids, attention_mask=input_mask, labels=label_ids)
-                pretrained_model_outputs = pretrained_model(input_ids=input_ids, token_type_ids=None, attention_mask=input_mask, labels=label_ids)
-                outputs = cosmosqa_model(pretrained_model_outputs,input_ids=input_ids, token_type_ids=None, attention_mask=input_mask, labels=label_ids)
+        tr_loss, logging_loss = 0.0, 0.0
+        nb_tr_examples, nb_tr_steps = 0, 0
+        bar = tqdm(range(num_train_optimization_steps), total=num_train_optimization_steps)
+        train_dataloader = cycle(train_dataloader)
+        eval_flag = True
+        for step in bar:
+            batch = next(train_dataloader)
+            batch = tuple(t.to(device) for t in batch)
+            input_ids, input_mask, segment_ids, label_ids = batch
+            # loss = model(input_ids=input_ids, token_type_ids=segment_ids, attention_mask=input_mask, labels=label_ids)
+            pretrained_model_outputs = pretrained_model(input_ids=input_ids, token_type_ids=None, attention_mask=input_mask, labels=label_ids)
+            outputs = cosmosqa_model(pretrained_model_outputs,input_ids=input_ids, token_type_ids=None, attention_mask=input_mask, labels=label_ids)
 
-                loss = outputs  # model outputs are always tuple in pytorch-transformers (see doc)
+            loss = outputs  # model outputs are always tuple in pytorch-transformers (see doc)
 
-                # loss = model(input_ids=input_ids, token_type_ids=None, attention_mask=input_mask, labels=label_ids)
-                if args.n_gpu > 1:
-                    loss = loss.mean()  # mean() to average on multi-gpu.
-                if args.fp16 and args.loss_scale != 1.0:
-                    loss = loss * args.loss_scale
-                if args.gradient_accumulation_steps > 1:
-                    loss = loss / args.gradient_accumulation_steps
-                # print(loss)
+            # loss = model(input_ids=input_ids, token_type_ids=None, attention_mask=input_mask, labels=label_ids)
+            if args.n_gpu > 1:
+                loss = loss.mean()  # mean() to average on multi-gpu.
+            if args.fp16 and args.loss_scale != 1.0:
+                loss = loss * args.loss_scale
+            if args.gradient_accumulation_steps > 1:
+                loss = loss / args.gradient_accumulation_steps
+            # print(loss)
+            tr_loss += loss.item()
+            train_loss = round(tr_loss * args.gradient_accumulation_steps / (nb_tr_steps + 1), 4)
+            bar.set_description("loss {}".format(train_loss))
+            nb_tr_examples += input_ids.size(0)
+            nb_tr_steps += 1
+
+            if args.fp16:
+                optimizer.backward(loss)
+            else:
+                loss.backward()
+
+            if (nb_tr_steps + 1) % args.gradient_accumulation_steps == 0:
                 if args.fp16:
-                    with amp.scale_loss(loss, optimizer) as scaled_loss:
-                        scaled_loss.backward()
-                else:
-                    loss.backward()
-                tr_loss += loss.item()
-                train_loss = round(tr_loss * args.gradient_accumulation_steps / (nb_tr_steps + 1), 4)
-                # bar.set_description('global_step: {0}, loss: {1}'.format(global_step, train_loss))
-                nb_tr_examples += input_ids.size(0)
-                nb_tr_steps += 1
+                    # modify learning rate with special warm up BERT uses
+                    # if args.fp16 is False, BertAdam is used that handles this automatically
+                    lr_this_step = args.learning_rate * warmup_linear.get_lr(global_step, args.warmup_proportion)
+                    for param_group in optimizer.param_groups:
+                        param_group['lr'] = lr_this_step
+                scheduler.step()
+                optimizer.step()
+                optimizer.zero_grad()
+                global_step += 1
+                eval_flag = True
 
-                # logger.info("Epoch {}/{} - Iter {} / {}, loss = {:.5f}, time used = {:.3f}s".format(epoch, int(args.num_train_epochs),step,
-                #                                                                              len(train_dataloader),
-                #                                                                              loss.item(),
-                #                                                                              time.time() - start))
-
-                # if (nb_tr_steps + 1) % args.gradient_accumulation_steps == 0:
-                if (step + 1) % args.gradient_accumulation_steps == 0:
-                    if args.fp16:
-                        # modify learning rate with special warm up BERT uses
-                        # if args.fp16 is False, BertAdam is used that handles this automatically
-                        lr_this_step = args.learning_rate * warmup_linear.get_lr(global_step, args.warmup_proportion)
-                        for param_group in optimizer.param_groups:
-                            param_group['lr'] = lr_this_step
-                    optimizer.step()
-                    scheduler.step()
-                    optimizer.zero_grad()
-                    global_step += 1
-                    eval_flag = True
-
-                    if args.local_rank in [-1, 0] and args.logging_steps > 0 and global_step % args.logging_steps == 0:
-                        # Log metrics
-                        # if args.local_rank == -1 and args.evaluate_during_training:  # Only evaluate when single GPU otherwise metrics may not average well
-                            # results = evaluate(args, model, tokenizer)
-                            # for key, value in results.items():
-                            #     tb_writer.add_scalar('eval_{}'.format(key), value, global_step)
-                        # tb_writer.add_scalar('lr', scheduler.get_lr()[0], global_step)
-                        # tb_writer.add_scalar('loss', (tr_loss - logging_loss)/args.logging_steps, global_step)
-                        logging_loss = tr_loss
-                    if args.local_rank in [-1, 0] and args.save_steps > 0 and global_step % args.save_steps == 0:
-                        # Save model checkpoint
-                        output_dir = os.path.join(args.output_dir, 'checkpoint-{}'.format(global_step))
-                        if not os.path.exists(output_dir):
-                            os.makedirs(output_dir)
-                        model_to_save = cosmosqa_model.module if hasattr(cosmosqa_model, 'module') else cosmosqa_model  # Take care of distributed/parallel training
-                        model_to_save.save_pretrained(output_dir)
-                        model_to_save = pretrained_model.module if hasattr(pretrained_model, 'module') else pretrained_model  # Take care of distributed/parallel training
-                        model_to_save.save_pretrained(output_dir)
-                        torch.save(args, os.path.join(output_dir, 'training_args.bin'))
-                        logger.info("Saving model checkpoint to %s", output_dir)
-                        torch.save(optimizer.state_dict(), os.path.join(output_dir, 'optimizer.bin'))
-                        torch.save(scheduler.state_dict(), os.path.join(output_dir, 'scheduler.bin'))
-                        torch.save(args, os.path.join(output_dir, 'training_args.bin'))
-                        torch.save(global_step, os.path.join(args.output_dir, 'global_step.bin'))
-                        torch.save(nb_tr_steps, os.path.join(args.output_dir, 'nb_tr_steps.bin'))
-                        torch.save(nb_tr_examples, os.path.join(args.output_dir, 'nb_tr_examples.bin'))
-
-                        logger.info("Saving model checkpoint, optimizer, global_step to %s", output_dir)
-                        if (global_step/args.save_steps) > args.max_save_checkpoints:
-                            try:
-                                shutil.rmtree(os.path.join(args.output_dir, 'checkpoint-{}'.format(global_step-args.max_save_checkpoints*args.save_steps)))
-                            except OSError as e:
-                                print(e)
+                if args.local_rank in [-1, 0] and args.logging_steps > 0 and global_step % args.logging_steps == 0:
+                    # Log metrics
+                    # if args.local_rank == -1 and args.evaluate_during_training:  # Only evaluate when single GPU otherwise metrics may not average well
+                        # results = evaluate(args, model, tokenizer)
+                        # for key, value in results.items():
+                        #     tb_writer.add_scalar('eval_{}'.format(key), value, global_step)
+                    # tb_writer.add_scalar('lr', scheduler.get_lr()[0], global_step)
+                    # tb_writer.add_scalar('loss', (tr_loss - logging_loss)/args.logging_steps, global_step)
+                    logging_loss = tr_loss
 
             # if (global_step + 1) %args.report_steps==0:
             #     tr_loss = 0
@@ -1129,166 +971,142 @@ def main():
             #     logger.info("***** Report result *****")
             #     logger.info("  %s = %s", 'global_step', str(global_step+1))
             #     logger.info("  %s = %s", 'train loss', str(train_loss))
-            # print('global_step:',global_step)
-            # bar.set_description('global_step: {0}, loss: {1}'.format(global_step, train_loss))
-            # print('args.eval_steps:',args.eval_steps)
-            # print(args.do_eval)
+            print('global_step:',global_step)
+            print('args.eval_steps:',args.eval_steps)
+            print(args.do_eval)
 
-            # print((global_step + 1) % args.eval_steps == 0)
-            # print(eval_flag)
-            # print(args.do_eval and ((global_step + 1) % args.eval_steps == 0) and eval_flag)
+            print((global_step + 1) % args.eval_steps == 0)
+            print(eval_flag)
+            print(args.do_eval and ((global_step + 1) % args.eval_steps == 0) and eval_flag)
             # step % args.gradient_accumulation_steps == 1
-                if args.do_eval and ((global_step + 1) % args.eval_steps == 0) and eval_flag:
-                    eval_flag = False
-                    logger.info('eval...')
-                    for file in ['valid.jsonl']:
-                        eval_examples = read_examples_dict[args.preprocess_type](os.path.join(args.data_dir, file),
-                                                                                is_training=True)
-                        inference_labels = []
-                        gold_labels = []
-                        eval_features = convert_examples_to_features_dict[args.preprocess_type](
-                            eval_examples, tokenizer, args.max_seq_length, False)
-                        logger.info("***** Running evaluation *****")
-                        logger.info("  Num examples = %d", len(eval_examples))
-                        logger.info("  Batch size = %d", args.eval_batch_size)
-                        all_input_ids = torch.tensor(select_field(eval_features, 'input_ids'), dtype=torch.long)
-                        all_input_mask = torch.tensor(select_field(eval_features, 'input_mask'), dtype=torch.long)
-                        all_segment_ids = torch.tensor(select_field(eval_features, 'segment_ids'), dtype=torch.long)
-                        all_label = torch.tensor([f.label for f in eval_features], dtype=torch.long)
-                        eval_data = TensorDataset(all_input_ids, all_input_mask, all_segment_ids, all_label)
-                        # Run prediction for full data
-                        eval_sampler = SequentialSampler(eval_data)
-                        eval_dataloader = DataLoader(eval_data, sampler=eval_sampler, batch_size=args.eval_batch_size)
+            if args.do_eval and ((global_step + 1) % args.eval_steps == 0) and eval_flag:
+                eval_flag = False
+                print('eval...')
+                for file in ['valid.jsonl']:
+                    eval_examples = read_examples_dict[args.preprocess_type](os.path.join(args.data_dir, file),
+                                                                             is_training=True)
+                    inference_labels = []
+                    gold_labels = []
+                    eval_features = convert_examples_to_features_dict[args.preprocess_type](
+                        eval_examples, tokenizer, args.max_seq_length, False)
+                    logger.info("***** Running evaluation *****")
+                    logger.info("  Num examples = %d", len(eval_examples))
+                    logger.info("  Batch size = %d", args.eval_batch_size)
+                    all_input_ids = torch.tensor(select_field(eval_features, 'input_ids'), dtype=torch.long)
+                    all_input_mask = torch.tensor(select_field(eval_features, 'input_mask'), dtype=torch.long)
+                    all_segment_ids = torch.tensor(select_field(eval_features, 'segment_ids'), dtype=torch.long)
+                    all_label = torch.tensor([f.label for f in eval_features], dtype=torch.long)
+                    eval_data = TensorDataset(all_input_ids, all_input_mask, all_segment_ids, all_label)
+                    # Run prediction for full data
+                    eval_sampler = SequentialSampler(eval_data)
+                    eval_dataloader = DataLoader(eval_data, sampler=eval_sampler, batch_size=args.eval_batch_size)
 
-                        pretrained_model.eval()
-                        cosmosqa_model.eval()
-                        eval_loss, eval_accuracy = 0, 0
-                        nb_eval_steps, nb_eval_examples = 0, 0
-                        for input_ids, input_mask, segment_ids, label_ids in eval_dataloader:
-                            start = time.time()
-                            input_ids = input_ids.to(args.device)
-                            input_mask = input_mask.to(args.device)
-                            segment_ids = segment_ids.to(args.device)
-                            label_ids = label_ids.to(args.device)
+                    pretrained_model.eval()
+                    cosmosqa_model.eval()
+                    eval_loss, eval_accuracy = 0, 0
+                    nb_eval_steps, nb_eval_examples = 0, 0
+                    for input_ids, input_mask, segment_ids, label_ids in eval_dataloader:
+                        start = time.time()
+                        input_ids = input_ids.to(device)
+                        input_mask = input_mask.to(device)
+                        segment_ids = segment_ids.to(device)
+                        label_ids = label_ids.to(device)
 
-                            with torch.no_grad():
-                                # tmp_eval_loss= model(input_ids=input_ids, token_type_ids=segment_ids, attention_mask=input_mask, labels=label_ids)
-                                # logits = model(input_ids=input_ids, token_type_ids=segment_ids, attention_mask=input_mask)
-                                # tmp_eval_loss = model(input_ids=input_ids, token_type_ids=None,
-                                #                       attention_mask=input_mask, labels=label_ids)
-                                # logits = model(input_ids=input_ids, token_type_ids=None, attention_mask=input_mask)
-                                pretrained_model_outputs = pretrained_model(input_ids=input_ids, token_type_ids=None,
-                                                    attention_mask=input_mask, labels=label_ids)
-                                tmp_eval_loss = cosmosqa_model(pretrained_model_outputs, input_ids=input_ids, token_type_ids=None, attention_mask=input_mask, labels=label_ids)
-                                logits = cosmosqa_model(pretrained_model_outputs, input_ids=input_ids, token_type_ids=None, attention_mask=input_mask)
+                        with torch.no_grad():
+                            # tmp_eval_loss= model(input_ids=input_ids, token_type_ids=segment_ids, attention_mask=input_mask, labels=label_ids)
+                            # logits = model(input_ids=input_ids, token_type_ids=segment_ids, attention_mask=input_mask)
+                            # tmp_eval_loss = model(input_ids=input_ids, token_type_ids=None,
+                            #                       attention_mask=input_mask, labels=label_ids)
+                            # logits = model(input_ids=input_ids, token_type_ids=None, attention_mask=input_mask)
+                            pretrained_model_outputs = pretrained_model(input_ids=input_ids, token_type_ids=None,
+                                                  attention_mask=input_mask, labels=label_ids)
+                            tmp_eval_loss = cosmosqa_model(pretrained_model_outputs, input_ids=input_ids, token_type_ids=None, attention_mask=input_mask, labels=label_ids)
+                            logits = cosmosqa_model(pretrained_model_outputs, input_ids=input_ids, token_type_ids=None, attention_mask=input_mask)
 
-                            logits = logits.detach().cpu().numpy()
-                            label_ids = label_ids.to('cpu').numpy()
-                            tmp_eval_accuracy = accuracy(logits, label_ids)
-                            # if nb_eval_steps==0:
-                            #    print(logits)
-                            inference_labels.append(np.argmax(logits, axis=1))
-                            gold_labels.append(label_ids)
-                            eval_loss += tmp_eval_loss.mean().item()
-                            eval_accuracy += tmp_eval_accuracy
+                        logits = logits.detach().cpu().numpy()
+                        label_ids = label_ids.to('cpu').numpy()
+                        tmp_eval_accuracy = accuracy(logits, label_ids)
+                        # if nb_eval_steps==0:
+                        #    print(logits)
+                        inference_labels.append(np.argmax(logits, axis=1))
+                        gold_labels.append(label_ids)
+                        eval_loss += tmp_eval_loss.mean().item()
+                        eval_accuracy += tmp_eval_accuracy
 
-                            nb_eval_examples += input_ids.size(0)
-                            nb_eval_steps += 1
+                        nb_eval_examples += input_ids.size(0)
+                        nb_eval_steps += 1
 
-                            logger.info(
-                                "Validation Iter {} / {}, loss = {:.5f}, accuracy = {}, time used = {:.3f}s".format(nb_eval_steps,
-                                                                                                    len(eval_dataloader),
-                                                                                                    tmp_eval_loss.mean().item(),
-                                                                                                    tmp_eval_accuracy.item()/input_ids.size(0),
-                                                                                                    time.time() - start))
+                        logger.info(
+                            "Validation Iter {} / {}, loss = {:.5f}, accuracy = {}, time used = {:.3f}s".format(nb_eval_steps,
+                                                                                                 len(eval_dataloader),
+                                                                                                 tmp_eval_loss.mean().item(),
+                                                                                                tmp_eval_accuracy.item()/input_ids.size(0),
+                                                                                                time.time() - start))
 
-                        eval_loss = eval_loss / nb_eval_steps
-                        eval_accuracy = eval_accuracy / nb_eval_examples
+                    eval_loss = eval_loss / nb_eval_steps
+                    eval_accuracy = eval_accuracy / nb_eval_examples
 
-                        result = {'eval_loss': eval_loss,
-                                'eval_accuracy': eval_accuracy,
-                                'global_step': global_step + 1,
-                                'loss': train_loss}
+                    result = {'eval_loss': eval_loss,
+                              'eval_accuracy': eval_accuracy,
+                              'global_step': global_step + 1,
+                              'loss': train_loss}
 
-                        logger.info('result:{}'.format(result))
+                    logger.info('result:{}'.format(result))
 
-                        output_eval_file = os.path.join(args.output_dir, "eval_results.txt")
-                        with open(output_eval_file, "a", encoding='utf8') as writer:
-                            writer.write('Epoch: {0}, Step: {1}\n'.format(epoch, global_step))
-                            for key in sorted(result.keys()):
-                                logger.info("  %s = %s", key, str(result[key]))
-                                writer.write("%s = %s\n" % (key, str(result[key])))
-                            writer.write('*' * 80)
-                            writer.write('\n')
-                        result_data = ''
-                        # with open(output_eval_file, 'r', encoding='utf8') as fr:
-                        #     result_data = fr.read()
-                        model_type = 'Unkn'
-                        if args.meta_fac_adaptermodel and args.meta_lin_adaptermodel:
-                            model_type = 'F+L'
-                        elif args.meta_fac_adaptermodel:
-                            model_type = 'F'
-                        elif args.meta_lin_adaptermodel:
-                            model_type = 'L'
-                        dataset = args.data_dir.split('/')[-1]
-                        if args.save_to_s3:
-                            s3.put(output_eval_file, 's3://kadapter/results/{0}/{1}/eval_results-s-{2}-lr-{3}-w-{4}-b-{5}-e-{6}.txt'.format(
-                                model_type,
-                                dataset,
-                                args.max_seq_length,
-                                args.learning_rate,
-                                args.warmup_steps,
-                                args.per_gpu_train_batch_size,
-                                args.num_train_epochs,
-                            ))
+                    output_eval_file = os.path.join(args.output_dir, "eval_results.txt")
+                    with open(output_eval_file, "a", encoding='utf8') as writer:
+                        for key in sorted(result.keys()):
+                            logger.info("  %s = %s", key, str(result[key]))
+                            writer.write("%s = %s\n" % (key, str(result[key])))
+                        writer.write('*' * 80)
+                        writer.write('\n')
 
-                        # for key, value in result.items():
-                        #     tb_writer.add_scalar('eval_{}'.format(key), value, global_step)
+                    # for key, value in result.items():
+                    #     tb_writer.add_scalar('eval_{}'.format(key), value, global_step)
 
-                        # HACK: Disable saving of every eval step
-                        # model_to_save = cosmosqa_model.module if hasattr(cosmosqa_model, 'module') else cosmosqa_model  # Take care of distributed/parallel training
-                        # # model_to_save = model.module if hasattr(model,
-                        # #                                         'module') else model  # Only save the model it-self
-                        # output_model_file = os.path.join(args.output_dir,
-                        #                                  "pytorch_model_{}_{}.bin".format(global_step + 1,
-                        #                                                                   eval_accuracy))
-                        # torch.save(model_to_save.state_dict(), output_model_file)
-                        # model_to_save = pretrained_model.module if hasattr(pretrained_model, 'module') else pretrained_model
-                        # output_model_file = os.path.join(args.output_dir,
-                        #                                  "pytorch_bertmodel_{}_{}.bin".format(global_step + 1,
-                        #                                                                   eval_accuracy))
-                        # torch.save(model_to_save.state_dict(), output_model_file)
+                    model_to_save = cosmosqa_model.module if hasattr(cosmosqa_model, 'module') else cosmosqa_model  # Take care of distributed/parallel training
+                    # model_to_save = model.module if hasattr(model,
+                    #                                         'module') else model  # Only save the model it-self
+                    output_model_file = os.path.join(args.output_dir,
+                                                     "pytorch_model_{}_{}.bin".format(global_step + 1,
+                                                                                      eval_accuracy))
+                    torch.save(model_to_save.state_dict(), output_model_file)
+                    model_to_save = pretrained_model.module if hasattr(pretrained_model, 'module') else pretrained_model
+                    output_model_file = os.path.join(args.output_dir,
+                                                     "pytorch_bertmodel_{}_{}.bin".format(global_step + 1,
+                                                                                      eval_accuracy))
+                    torch.save(model_to_save.state_dict(), output_model_file)
 
-                        if eval_accuracy > best_acc and 'valid' in file:
-                            logger.info("=" * 80)
-                            logger.info("Best Acc", eval_accuracy)
-                            logger.info("Saving Model......")
-                            best_acc = eval_accuracy
-                            # Save a trained model
-                            model_to_save = cosmosqa_model.module if hasattr(cosmosqa_model,
-                                                                    'module') else cosmosqa_model  # Take care of distributed/parallel training
-                            output_model_file = os.path.join(args.output_dir, "pytorch_model_best.bin")
-                            torch.save(model_to_save.state_dict(), output_model_file)
-                            model_to_save = pretrained_model.module if hasattr(pretrained_model,
-                                                                            'module') else pretrained_model
-                            output_model_file = os.path.join(args.output_dir, "pytorch_bertmodel_best.bin")
-                            torch.save(model_to_save.state_dict(), output_model_file)
-                        #     print("=" * 80)
-                        #     inference_labels = np.concatenate(inference_labels, 0)
-                        #     gold_labels = np.concatenate(gold_labels, 0)
-                        #     with open(os.path.join(args.output_dir, "error_output.txt", ), 'w', encoding='utf8') as f:
-                        #         for i in range(len(eval_examples)):
-                        #             if inference_labels[i] != gold_labels[i]:
-                        #                 f.write(str(repr(eval_examples[i])) + '\n')
-                        #                 f.write(str(inference_labels[i]) + '\n')
-                        #                 f.write("=" * 80 + '\n')
-                        # else:
-                        #     print("=" * 80)
-                    if args.freeze_bert:
-                        pretrained_model.eval()
-                    else:
-                        pretrained_model.train()
-                    cosmosqa_model.train()
+                    if eval_accuracy > best_acc and 'dev' in file:
+                        print("=" * 80)
+                        print("Best Acc", eval_accuracy)
+                        print("Saving Model......")
+                        best_acc = eval_accuracy
+                        # Save a trained model
+                        model_to_save = cosmosqa_model.module if hasattr(cosmosqa_model,
+                                                                   'module') else cosmosqa_model  # Take care of distributed/parallel training
+                        output_model_file = os.path.join(args.output_dir, "pytorch_model_best.bin")
+                        torch.save(model_to_save.state_dict(), output_model_file)
+                        model_to_save = pretrained_model.module if hasattr(pretrained_model,
+                                                                           'module') else pretrained_model
+                        output_model_file = os.path.join(args.output_dir, "pytorch_bertmodel_best.bin")
+                        torch.save(model_to_save.state_dict(), output_model_file)
+                    #     print("=" * 80)
+                    #     inference_labels = np.concatenate(inference_labels, 0)
+                    #     gold_labels = np.concatenate(gold_labels, 0)
+                    #     with open(os.path.join(args.output_dir, "error_output.txt", ), 'w', encoding='utf8') as f:
+                    #         for i in range(len(eval_examples)):
+                    #             if inference_labels[i] != gold_labels[i]:
+                    #                 f.write(str(repr(eval_examples[i])) + '\n')
+                    #                 f.write(str(inference_labels[i]) + '\n')
+                    #                 f.write("=" * 80 + '\n')
+                    # else:
+                    #     print("=" * 80)
+                if args.freeze_bert:
+                    pretrained_model.eval()
+                else:
+                    pretrained_model.train()
+                cosmosqa_model.train()
                 # model.train()
 
     #
