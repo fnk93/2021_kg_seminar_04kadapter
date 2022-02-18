@@ -25,6 +25,7 @@ import glob
 import logging
 import os
 import random
+import shutil
 
 import numpy as np
 import torch
@@ -296,6 +297,12 @@ def train(args, train_dataset, model, tokenizer):
                     torch.save(global_step, os.path.join(args.output_dir, 'global_step.bin'))
 
                     logger.info("Saving model checkpoint, optimizer, global_step to %s", output_dir)
+                    logger.info("Saving model checkpoint, optimizer, global_step to %s", output_dir)
+                    if (global_step/args.save_steps) > args.max_save_checkpoints:
+                        try:
+                            shutil.rmtree(os.path.join(args.output_dir, 'checkpoint-{}'.format(global_step-args.max_save_checkpoints*args.save_steps)))
+                        except OSError as e:
+                            print(e)
 
                 # if global_step %args.eval_steps== 0:  # Only evaluate when single GPU otherwise metrics may not average well
                 #     model = (pretrained_model, tacred_model)
@@ -881,6 +888,8 @@ def main():
                         help="Log every X updates steps.")
     parser.add_argument('--save_steps', type=int, default=1000,
                         help="Save checkpoint every X updates steps.")
+    parser.add_argument('--max_save_checkpoints', type=int, default=500,
+                        help="The max amounts of checkpoint saving. Bigger than it will delete the former checkpoints")
     parser.add_argument("--eval_all_checkpoints", action='store_true',
                         help="Evaluate all checkpoints starting with the same prefix as model_name ending and ending with step number")
     parser.add_argument("--no_cuda", action='store_true',
