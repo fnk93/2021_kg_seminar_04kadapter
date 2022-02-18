@@ -26,9 +26,9 @@ warmup=1000
 fac_adap='./pretrained_models/fac-adapter/pytorch_model.bin'
 lin_adap='./pretrained_models/lin-adapter/pytorch_model.bin'
 comment='fl-litwd19k-adapter'
-batch_size=2048
-dataset=data/LitWD19K
-accu=512
+batch_size=512
+dataset=data/LitWD1K
+accu=128
 python examples/run_finetune_litWik_adapter.py \
     --model_type roberta \
     --model_name_or_path roberta-large \
@@ -90,8 +90,9 @@ comment='f-litwd1k-adapter'
 # fac_adap='./pretrained_models/fac-adapter/pytorch_model.bin'
 # lin_adap='./pretrained_models/lin-adapter/pytorch_model.bin'
 # comment='fl-litwd19k-adapter'
-batch_size=2048
-dataset=data/LitWD19K
+batch_size=512
+dataset=data/LitWD1K
+accu=128
 python examples/run_finetune_litWik_adapter.py \
     --model_type roberta \
     --model_name_or_path roberta-large \
@@ -153,8 +154,9 @@ comment='l-litwd1k-adapter'
 # fac_adap='./pretrained_models/fac-adapter/pytorch_model.bin'
 # lin_adap='./pretrained_models/lin-adapter/pytorch_model.bin'
 # comment='fl-litwd19k-adapter'
-batch_size=2048
-dataset=data/LitWD19K
+batch_size=512
+dataset=data/LitWD1K
+accu=128
 python examples/run_finetune_litWik_adapter.py \
     --model_type roberta \
     --model_name_or_path roberta-large \

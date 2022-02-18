@@ -28,6 +28,8 @@ lin_adap='./pretrained_models/lin-adapter/pytorch_model.bin'
 comment='fl-figer-adapter'
 batch_size=2048
 accu=512
+batch_size=512
+accu=128
 
 dataset=data/FIGER
 
@@ -95,6 +97,8 @@ comment='f-figer-adapter'
 # lin_adap='./pretrained_models/lin-adapter/pytorch_model.bin'
 # comment='fl-figer-adapter'
 batch_size=2048
+batch_size=512
+accu=128
 
 dataset=data/FIGER
 
@@ -162,6 +166,8 @@ comment='l-figer-adapter'
 # lin_adap='./pretrained_models/lin-adapter/pytorch_model.bin'
 # comment='fl-figer-adapter'
 batch_size=2048
+batch_size=512
+accu=128
 
 dataset=data/FIGER
 
