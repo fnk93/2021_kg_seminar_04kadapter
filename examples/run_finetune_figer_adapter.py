@@ -22,6 +22,7 @@ from __future__ import absolute_import, division, print_function
 import argparse
 import logging
 import os,time
+import pathlib
 import random
 
 import numpy as np
@@ -975,6 +976,9 @@ def main():
     args.output_mode = output_modes[args.task_name]
     if not os.path.exists(os.path.join(args.data_dir,'labels.json')):
         logger.info("label_list not exist, creating.....")
+        data_path = pathlib.Path(args.data_dir)
+        if not data_path.exists():
+            data_path.mkdir(parents=True)
         try:
             with open(os.path.join(args.data_dir,'train.json'), 'r', encoding='utf8') as f:
                 examples = []
