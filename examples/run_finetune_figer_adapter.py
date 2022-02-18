@@ -975,24 +975,48 @@ def main():
     args.output_mode = output_modes[args.task_name]
     if not os.path.exists(os.path.join(args.data_dir,'labels.json')):
         logger.info("label_list not exist, creating.....")
-        with open(os.path.join(args.data_dir,'train.json'), 'r', encoding='utf8') as f:
-            examples = []
-            lines = json.load(f)
-            for (i, line) in enumerate(lines):
-                label = line['labels']
-                examples.append(label)
-            d = {}
-            for e in examples:
-                for l in e:
-                    if l in d:
-                        d[l] += 1
-                    else:
-                        d[l] = 1
-            for k, v in d.items():
-                d[k] = (len(examples) - v) * 1. / v
+        try:
+            with open(os.path.join(args.data_dir,'train.json'), 'r', encoding='utf8') as f:
+                examples = []
+                lines = json.load(f)
+                for (i, line) in enumerate(lines):
+                    label = line['labels']
+                    examples.append(label)
+                d = {}
+                for e in examples:
+                    for l in e:
+                        if l in d:
+                            d[l] += 1
+                        else:
+                            d[l] = 1
+                for k, v in d.items():
+                    d[k] = (len(examples) - v) * 1. / v
 
-            label_list = list(d.keys())
-            examples = []
+                label_list = list(d.keys())
+                examples = []
+        except Exception as exc:
+            if args.read_from_s3:
+                s3 = s3fs.S3FileSystem(anon=False)
+                with s3.open('kadapter/' + args.data_dir + '/train.json', 'r', encoding='utf8') as f:
+                    examples = []
+                    lines = json.load(f)
+                    for (i, line) in enumerate(lines):
+                        label = line['labels']
+                        examples.append(label)
+                    d = {}
+                    for e in examples:
+                        for l in e:
+                            if l in d:
+                                d[l] += 1
+                            else:
+                                d[l] = 1
+                    for k, v in d.items():
+                        d[k] = (len(examples) - v) * 1. / v
+
+                    label_list = list(d.keys())
+                    examples = []
+            else:
+                raise exc
         with open(os.path.join(args.data_dir,'labels.json'), "w") as f:
             json.dump(label_list, f)
     else:
