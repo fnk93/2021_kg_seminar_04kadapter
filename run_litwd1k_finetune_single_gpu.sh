@@ -256,7 +256,7 @@ CUDA_VISIBLE_DEVICES=$GPU python examples/run_finetune_TACRED_adapter.py \
     --meta_fac_adaptermodel=$fac_adap \
     --meta_lin_adaptermodel=$lin_adap \
     --save_to_s3 \
-    --read_from_s3
+    --read_from_s3 \
     --num_train_epochs=5
 
 # Copyright (c) Microsoft Corporation.
@@ -323,7 +323,7 @@ CUDA_VISIBLE_DEVICES=$GPU python examples/run_finetune_TACRED_adapter.py \
     --meta_fac_adaptermodel=$fac_adap \
     --meta_lin_adaptermodel=$lin_adap \
     --save_to_s3 \
-    --read_from_s3
+    --read_from_s3 \
     --num_train_epochs=5
 
 # Copyright (c) Microsoft Corporation.
@@ -390,5 +390,5 @@ CUDA_VISIBLE_DEVICES=$GPU python examples/run_finetune_TACRED_adapter.py \
     --meta_fac_adaptermodel=$fac_adap \
     --meta_lin_adaptermodel=$lin_adap \
     --save_to_s3 \
-    --read_from_s3
+    --read_from_s3 \
     --num_train_epochs=5
