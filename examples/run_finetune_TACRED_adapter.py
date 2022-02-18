@@ -688,11 +688,11 @@ class TACREDModel(nn.Module):
         if self.args.task_name == 'tacred':
             self.num_labels = 42
         elif self.args.task_name == 'litwd':
-            self.num_labels = 280
+            self.num_labels = 281
         elif self.args.task_name == 'wn18rr':
-            self.num_labels = 11
+            self.num_labels = 12
         elif self.args.task_name == 'fb15k':
-            self.num_labels = 237
+            self.num_labels = 238
 
         self.dense = nn.Linear(self.config.hidden_size * 2, self.config.hidden_size)
         self.dropout = nn.Dropout(self.config.hidden_dropout_prob)
