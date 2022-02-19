@@ -230,7 +230,7 @@ lr=5e-6
 warmup=1000
 fac_adap='./pretrained_models/fac-adapter/pytorch_model.bin'
 lin_adap='./pretrained_models/lin-adapter/pytorch_model.bin'
-comment='fl-adapter-dif-trf'
+comment='fl-litwd1krel-dif-trf'
 dataset=data/LitWD1Krel
 batch_size=32
 accu=4
@@ -281,7 +281,7 @@ lr=1e-5
 warmup=500
 fac_adap='./pretrained_models/fac-adapter/pytorch_model.bin'
 lin_adap=''
-comment='f-adapter-dif-trf'
+comment='f-litwd1krel-dif-trf'
 # # best results for L
 # seq_length=184
 # batch_size=32
@@ -356,7 +356,7 @@ lr=1e-5
 warmup=200
 fac_adap=''
 lin_adap='./pretrained_models/lin-adapter/pytorch_model.bin'
-comment='l-adapter-dif-trf'
+comment='l-litwd1krel-dif-trf'
 
 # # best results for F+L
 # seq_length=184
