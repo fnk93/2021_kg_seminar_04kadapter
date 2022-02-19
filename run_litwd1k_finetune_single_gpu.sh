@@ -22,7 +22,7 @@ task=entity_type_kg
 seq_length=256
 batch_size=2048
 batch_size=16
-lr=5e-6
+lr=3e-5
 warmup=1000
 fac_adap='./pretrained_models/fac-adapter/pytorch_model.bin'
 lin_adap='./pretrained_models/lin-adapter/pytorch_model.bin'
@@ -30,6 +30,8 @@ comment='fl-litwd1k-adapter'
 batch_size=8
 dataset=data/LitWD1K
 accu=2
+batch_size=16
+accu=4
 python examples/run_finetune_litWik_adapter.py \
     --model_type roberta \
     --model_name_or_path roberta-large \
@@ -70,7 +72,7 @@ task=entity_type_kg
 # best results on F
 seq_length=256
 batch_size=2048
-lr=5e-6
+lr=3e-5
 warmup=500
 fac_adap='./pretrained_models/fac-adapter/pytorch_model.bin'
 lin_adap=''
@@ -95,6 +97,8 @@ comment='f-litwd1k-adapter'
 batch_size=8
 dataset=data/LitWD1K
 accu=2
+batch_size=16
+accu=4
 python examples/run_finetune_litWik_adapter.py \
     --model_type roberta \
     --model_name_or_path roberta-large \
@@ -143,7 +147,7 @@ task=entity_type_kg
 # best results on L
 seq_length=256
 batch_size=2048
-lr=5e-6
+lr=3e-5
 warmup=200
 fac_adap=''
 lin_adap='./pretrained_models/lin-adapter/pytorch_model.bin'
@@ -160,6 +164,8 @@ comment='l-litwd1k-adapter'
 batch_size=8
 dataset=data/LitWD1K
 accu=2
+batch_size=16
+accu=4
 python examples/run_finetune_litWik_adapter.py \
     --model_type roberta \
     --model_name_or_path roberta-large \
