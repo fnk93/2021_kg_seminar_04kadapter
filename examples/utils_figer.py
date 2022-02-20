@@ -147,7 +147,7 @@ class DataProcessor(object):
                 raise exc
 
     @classmethod
-    def _read_semeval_txt(clas, input_file, read_from_s3: bool = False):
+    def _read_semeval_txt(cls, input_file, read_from_s3: bool = False):
         try:
             with open(input_file, 'r', encoding='utf8') as f:
                 examples = []
