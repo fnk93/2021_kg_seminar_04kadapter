@@ -335,6 +335,7 @@ def train(args, train_dataset, model, tokenizer):
     return global_step, tr_loss / global_step
 
 save_results=[]
+@torch.no_grad()
 def evaluate(args, model, tokenizer, prefix="", epoch=0, global_step=0):
     pretrained_model = model[0]
     tacred_model = model[1]

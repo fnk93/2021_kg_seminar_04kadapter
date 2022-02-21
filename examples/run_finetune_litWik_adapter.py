@@ -318,6 +318,7 @@ def accuracy(out, l):
         cnt += set(yy1) == set(yy2)
     return cnt, y1, y2
 save_results=[]
+@torch.no_grad()
 def evaluate(args, model, tokenizer, prefix="", epoch=0, global_step=0):
     pretrained_model = model[0]
     figer_model = model[1]
