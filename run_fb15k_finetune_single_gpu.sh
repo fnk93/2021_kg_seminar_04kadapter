@@ -29,8 +29,8 @@ lr=5e-6
 warmup=1000
 fac_adap='./pretrained_models/fac-adapter/pytorch_model.bin'
 lin_adap='./pretrained_models/lin-adapter/pytorch_model.bin'
-comment='fl-fb15k-fb15k-adapter-dif-trf'
-dataset=data/FB15Krel
+comment='fl-fb15k-adapter-dif-trf'
+dataset=data/FB15K-237rel
 batch_size=32
 accu=16
 
@@ -98,7 +98,7 @@ comment='l-fb15k-adapter-dif-trf'
 # fac_adap='./pretrained_models/fac-adapter/pytorch_model.bin'
 # lin_adap='./pretrained_models/lin-adapter/pytorch_model.bin'
 # comment='fl-fb15k-adapter-dif-trf'
-dataset=data/FB15Krel
+dataset=data/FB15K-237rel
 batch_size=32
 
 CUDA_VISIBLE_DEVICES=$GPU python examples/run_finetune_TACRED_adapter.py \
@@ -165,7 +165,7 @@ comment='f-fb15k-adapter-dif-trf'
 # fac_adap='./pretrained_models/fac-adapter/pytorch_model.bin'
 # lin_adap='./pretrained_models/lin-adapter/pytorch_model.bin'
 # comment='fl-fb15k-adapter-dif-trf'
-dataset=data/FB15Krel
+dataset=data/FB15K-237rel
 batch_size=32
 
 CUDA_VISIBLE_DEVICES=$GPU python examples/run_finetune_TACRED_adapter.py \
