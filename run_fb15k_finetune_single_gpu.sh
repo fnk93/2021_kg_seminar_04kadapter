@@ -32,7 +32,7 @@ lin_adap='./pretrained_models/lin-adapter/pytorch_model.bin'
 comment='fl-fb15k-adapter-dif-trf'
 dataset=data/FB15K-237rel
 batch_size=32
-accu=16
+accu=4
 
 CUDA_VISIBLE_DEVICES=$GPU python examples/run_finetune_TACRED_adapter.py \
     --model_type roberta \
