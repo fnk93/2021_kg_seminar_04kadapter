@@ -93,7 +93,7 @@ def train(args, train_dataset, model, tokenizer):
 
     args.train_batch_size = args.per_gpu_train_batch_size * max(1, args.n_gpu)
     train_sampler = RandomSampler(train_dataset) if args.local_rank == -1 else DistributedSampler(train_dataset)
-    train_dataloader = DataLoader(train_dataset, sampler=train_sampler, batch_size=args.train_batch_size // args.gradient_accumulation_steps)
+    train_dataloader = DataLoader(train_dataset, sampler=train_sampler, batch_size=args.train_batch_size // args.gradient_accumulation_steps, num_workers=multiprocessing.cpu_count(), pin_memory=True)
 
     if args.max_steps > 0:
         t_total = args.max_steps
@@ -210,8 +210,8 @@ def train(args, train_dataset, model, tokenizer):
         logger.info("Start from scratch")
     tr_loss, logging_loss = 0.0, 0.0
     # model.zero_grad()
-    pretrained_model.zero_grad()
-    et_model.zero_grad()
+    pretrained_model.zero_grad(set_to_none=True)
+    et_model.zero_grad(set_to_none=True)
 
     # train_iterator = trange(int(args.num_train_epochs), desc="Epoch", disable=args.local_rank not in [-1, 0])
     train_iterator = trange(start_epoch, int(args.num_train_epochs), desc="Epoch", disable=args.local_rank not in [-1, 0])
@@ -262,8 +262,8 @@ def train(args, train_dataset, model, tokenizer):
                 scheduler.step()  # Update learning rate schedule
 
                 # model.zero_grad()
-                pretrained_model.zero_grad()
-                et_model.zero_grad()
+                pretrained_model.zero_grad(set_to_none=True)
+                et_model.zero_grad(set_to_none=True)
                 global_step += 1
 
                 if args.local_rank in [-1, 0] and args.logging_steps > 0 and global_step % args.logging_steps == 0:
@@ -319,6 +319,7 @@ def train(args, train_dataset, model, tokenizer):
     return global_step, tr_loss / global_step
 
 save_results=[]
+@torch.no_grad()
 def evaluate(args, model, tokenizer, prefix="", epoch=0, global_step=0):
     pretrained_model = model[0]
     et_model = model[1]
@@ -340,7 +341,7 @@ def evaluate(args, model, tokenizer, prefix="", epoch=0, global_step=0):
             args.eval_batch_size = args.per_gpu_eval_batch_size * max(1, args.n_gpu)
             # Note that DistributedSampler samples randomly
             eval_sampler = SequentialSampler(eval_dataset) if args.local_rank == -1 else DistributedSampler(eval_dataset)
-            eval_dataloader = DataLoader(eval_dataset, sampler=eval_sampler, batch_size=args.eval_batch_size)
+            eval_dataloader = DataLoader(eval_dataset, sampler=eval_sampler, batch_size=args.eval_batch_size, num_workers=multiprocessing.cpu_count(), pin_memory=True)
 
             # Eval!
             logger.info("***** Running evaluation {} *****".format(prefix))
