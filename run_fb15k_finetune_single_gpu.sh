@@ -29,7 +29,7 @@ lr=5e-6
 warmup=1000
 fac_adap='./pretrained_models/fac-adapter/pytorch_model.bin'
 lin_adap='./pretrained_models/lin-adapter/pytorch_model.bin'
-comment='fl-fb15k-adapter-dif-trf'
+comment='fl-fb15k-fb15k-adapter-dif-trf'
 dataset=data/FB15Krel
 batch_size=32
 accu=16
@@ -88,7 +88,7 @@ lr=1e-5
 warmup=200
 fac_adap=''
 lin_adap='./pretrained_models/lin-adapter/pytorch_model.bin'
-comment='l-adapter-dif-trf'
+comment='l-fb15k-adapter-dif-trf'
 
 # # best results for F+L
 # seq_length=184
@@ -147,7 +147,7 @@ lr=1e-5
 warmup=500
 fac_adap='./pretrained_models/fac-adapter/pytorch_model.bin'
 lin_adap=''
-comment='f-adapter-dif-trf'
+comment='f-fb15k-adapter-dif-trf'
 # # best results for L
 # seq_length=184
 # batch_size=32

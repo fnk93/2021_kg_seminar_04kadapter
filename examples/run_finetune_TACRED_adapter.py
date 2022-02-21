@@ -491,15 +491,15 @@ def load_and_cache_examples(args, task, tokenizer, dataset_type, evaluate=False)
             torch.distributed.barrier()  # Make sure only the first process in distributed training process the dataset, and the others will use the cache
 
     # Convert to Tensors and build dataset
-    all_input_ids = torch.tensor([f.input_ids for f in features], dtype=torch.long)
-    all_input_mask = torch.tensor([f.input_mask for f in features], dtype=torch.long)
-    all_segment_ids = torch.tensor([f.segment_ids for f in features], dtype=torch.long)
+    all_input_ids = torch.tensor(np.array([f.input_ids for f in features]), dtype=torch.long)
+    all_input_mask = torch.tensor(np.array([f.input_mask for f in features]), dtype=torch.long)
+    all_segment_ids = torch.tensor(np.array([f.segment_ids for f in features]), dtype=torch.long)
     if output_mode == "classification":
-        all_label_ids = torch.tensor([f.label_id for f in features], dtype=torch.long)
+        all_label_ids = torch.tensor(np.array([f.label_id for f in features]), dtype=torch.long)
     elif output_mode == "regression":
-        all_label_ids = torch.tensor([f.label_id for f in features], dtype=torch.float)
-    all_subj_special_start_ids = torch.tensor([f.subj_special_start_id for f in features], dtype=torch.float)
-    all_obj_special_start_ids = torch.tensor([f.obj_special_start_id for f in features], dtype=torch.float)
+        all_label_ids = torch.tensor(np.array([f.label_id for f in features]), dtype=torch.float)
+    all_subj_special_start_ids = torch.tensor(np.array([f.subj_special_start_id for f in features]), dtype=torch.float)
+    all_obj_special_start_ids = torch.tensor(np.array([f.obj_special_start_id for f in features]), dtype=torch.float)
 
     dataset = TensorDataset(all_input_ids, all_input_mask, all_segment_ids, all_label_ids, all_subj_special_start_ids, all_obj_special_start_ids)
     return dataset

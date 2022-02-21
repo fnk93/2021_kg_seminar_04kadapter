@@ -80,7 +80,7 @@ lr=1e-5
 warmup=500
 fac_adap='./pretrained_models/fac-adapter/pytorch_model.bin'
 lin_adap=''
-comment='f-adapter-dif-trf'
+comment='f-wn18rr-adapter-dif-trf'
 # # best results for L
 # seq_length=184
 # batch_size=32
@@ -155,7 +155,7 @@ lr=1e-5
 warmup=200
 fac_adap=''
 lin_adap='./pretrained_models/lin-adapter/pytorch_model.bin'
-comment='l-adapter-dif-trf'
+comment='l-wn18rr-adapter-dif-trf'
 
 # # best results for F+L
 # seq_length=184
