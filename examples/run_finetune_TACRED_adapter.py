@@ -641,7 +641,10 @@ class AdapterModel(nn.Module):
         hidden_states = outputs[2]
         num = len(hidden_states)
         # try:
-        hidden_states_last = torch.zeros(sequence_output.size()).to('cuda')
+        if self.args.tpu:
+            hidden_states_last = torch.zeros(sequence_output.size()).to(self.args.device)
+        else:
+            hidden_states_last = torch.zeros(sequence_output.size()).to('cuda')
         # except:
         #     if self.directml:
         #         hidden_states_last = torch.zeros(sequence_output.size()).to('dml')
@@ -841,6 +844,7 @@ def main():
 
     parser.add_argument("--restore", action='store_true', default=False, help="Whether restore from the last checkpoint, is nochenckpoints, start from scartch")
     parser.add_argument("--directml", action='store_true', default=False, help="Whether to use DirectML or not")
+    parser.add_argument("--tpu", action='store_true', default=False, help="Whether to use TPU or not")
     parser.add_argument("--save_to_s3", action='store_true', default=False, help="Whether to save results to s3://kadapter bucket")
     parser.add_argument("--read_from_s3", action='store_true', default=False, help="Whether to read dataset from s3://kadapter bucket")
 
@@ -917,6 +921,10 @@ def main():
     parser.add_argument('--negative_sample', type=int, help='how many negative samples to select')
     args = parser.parse_args()
 
+    if args.tpu:
+        import torch_xla
+        import torch_xla.core.xla_model as xm
+
     args.adapter_list = args.adapter_list.split(',')
     args.adapter_list = [int(i) for i in args.adapter_list]
 
@@ -945,6 +953,9 @@ def main():
             device = torch.device('dml')
             args.n_gpu = 1
             # args.n_gpu = 
+        elif args.tpu:
+            print('Using TPU')
+            device = xm.xla_device()
         else:
             print('Not using DirectML')
             device = torch.device("cuda" if torch.cuda.is_available() and not args.no_cuda else "cpu")
