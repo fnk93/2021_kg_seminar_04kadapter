@@ -956,6 +956,7 @@ def main():
         elif args.tpu:
             print('Using TPU')
             device = xm.xla_device()
+            args.n_gpu = 1
         else:
             print('Not using DirectML')
             device = torch.device("cuda" if torch.cuda.is_available() and not args.no_cuda else "cpu")
