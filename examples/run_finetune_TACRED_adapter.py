@@ -74,6 +74,13 @@ MODEL_CLASSES = {
     'roberta': (RobertaConfig, RobertaForTACRED, RobertaTokenizer),
 }
 
+class TpuLogger(object):
+    def warning(self, msg):
+        print(msg)
+    
+    def info(self, msg):
+        print(msg)
+
 def set_seed(args):
     random.seed(args.seed)
     np.random.seed(args.seed)
@@ -976,6 +983,8 @@ def main():
     args.device = device
 
     # Setup logging
+    if args.tpu:
+        logger = TpuLogger()
     logging.basicConfig(format = '%(asctime)s - %(levelname)s - %(name)s -   %(message)s',
                         datefmt = '%m/%d/%Y %H:%M:%S',
                         level = logging.INFO if args.local_rank in [-1, 0] else logging.WARN)
@@ -1045,7 +1054,6 @@ def main():
 
     pretrained_model.to(args.device)
     tacred_model.to(args.device)
-
     logger.info("Training/evaluation parameters %s", args)
 
     # Training
