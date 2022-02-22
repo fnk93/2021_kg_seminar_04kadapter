@@ -161,23 +161,41 @@ def train(args, train_dataset, model, tokenizer):
                                                                      find_unused_parameters=True)
 
     # Train!
-    logger.info("***** Running training *****")
-    logger.info("  Num examples = %d", len(train_dataset))
-    logger.info("  Num Epochs = %d", args.num_train_epochs)
-    logger.info("  Instantaneous batch size per GPU = %d", args.per_gpu_train_batch_size)
-    logger.info("  Total train batch size (w. parallel, distributed & accumulation) = %d",
-                #    args.train_batch_size * args.gradient_accumulation_steps * (torch.distributed.get_world_size() if args.local_rank != -1 else 1))
-                   args.train_batch_size * (torch.distributed.get_world_size() if args.local_rank != -1 else 1))
-    logger.info("  Gradient Accumulation steps = %d", args.gradient_accumulation_steps)
-    logger.info("  Total optimization steps = %d", t_total)
+    if args.tpu:
+        print("***** Running training *****")
+        print("  Num examples = %d", len(train_dataset))
+        print("  Num Epochs = %d", args.num_train_epochs)
+        print("  Instantaneous batch size per GPU = %d", args.per_gpu_train_batch_size)
+        print("  Total train batch size (w. parallel, distributed & accumulation) = %d",
+                    #    args.train_batch_size * args.gradient_accumulation_steps * (torch.distributed.get_world_size() if args.local_rank != -1 else 1))
+                    args.train_batch_size * (torch.distributed.get_world_size() if args.local_rank != -1 else 1))
+        print("  Gradient Accumulation steps = %d", args.gradient_accumulation_steps)
+        print("  Total optimization steps = %d", t_total)
+        print("Try resume from checkpoint")
+    else:
+        logger.info("***** Running training *****")
+        logger.info("  Num examples = %d", len(train_dataset))
+        logger.info("  Num Epochs = %d", args.num_train_epochs)
+        logger.info("  Instantaneous batch size per GPU = %d", args.per_gpu_train_batch_size)
+        logger.info("  Total train batch size (w. parallel, distributed & accumulation) = %d",
+                    #    args.train_batch_size * args.gradient_accumulation_steps * (torch.distributed.get_world_size() if args.local_rank != -1 else 1))
+                    args.train_batch_size * (torch.distributed.get_world_size() if args.local_rank != -1 else 1))
+        logger.info("  Gradient Accumulation steps = %d", args.gradient_accumulation_steps)
+        logger.info("  Total optimization steps = %d", t_total)
 
-    logger.info("Try resume from checkpoint")
+        logger.info("Try resume from checkpoint")
     if args.restore:
         if os.path.exists(os.path.join(args.output_dir, 'global_step.bin')):
-            logger.info("Load last checkpoint data")
+            if args.tpu:
+                print("Load last checkpoint data")
+            else:
+                logger.info("Load last checkpoint data")
             global_step = torch.load(os.path.join(args.output_dir, 'global_step.bin'))
             output_dir = os.path.join(args.output_dir, 'checkpoint-{}'.format(global_step))
-            logger.info("Load from output_dir {}".format(output_dir))
+            if args.tpu:
+                print("Load from output_dir {}".format(output_dir))
+            else:
+                logger.info("Load from output_dir {}".format(output_dir))
 
             optimizer.load_state_dict(torch.load(os.path.join(output_dir, 'optimizer.bin')))
             scheduler.load_state_dict(torch.load(os.path.join(output_dir, 'scheduler.bin')))
@@ -194,7 +212,10 @@ def train(args, train_dataset, model, tokenizer):
             global_step += 1
             start_epoch = int(global_step / len(train_dataloader))
             start_step = global_step-start_epoch*len(train_dataloader)-1
-            logger.info("Start from global_step={} epoch={} step={}".format(global_step, start_epoch, start_step))
+            if args.tpu:
+                print("Start from global_step={} epoch={} step={}".format(global_step, start_epoch, start_step))
+            else:
+                logger.info("Start from global_step={} epoch={} step={}".format(global_step, start_epoch, start_step))
             # if args.local_rank in [-1, 0]:
             #     tb_writer = SummaryWriter(log_dir="runs/" + args.my_model_name, purge_step=global_step)
         else:
@@ -203,8 +224,10 @@ def train(args, train_dataset, model, tokenizer):
             start_step = 0
             # if args.local_rank in [-1, 0]:
             #     tb_writer = SummaryWriter(log_dir="runs/" + args.my_model_name, purge_step=global_step)
-
-            logger.info("Start from scratch")
+            if args.tpu:
+                print("Start from scratch")
+            else:
+                logger.info("Start from scratch")
     else:
         global_step = 0
         start_epoch = 0
@@ -212,7 +235,10 @@ def train(args, train_dataset, model, tokenizer):
         # if args.local_rank in [-1, 0]:
         #     tb_writer = SummaryWriter(log_dir="runs/" + args.my_model_name, purge_step=global_step)
 
-        logger.info("Start from scratch")
+        if args.tpu:
+            print("Start from scratch")
+        else:
+            logger.info("Start from scratch")
     # global_step = 0
     tr_loss, logging_loss = 0.0, 0.0
     # model.zero_grad()
@@ -251,10 +277,16 @@ def train(args, train_dataset, model, tokenizer):
                 loss = loss / args.gradient_accumulation_steps
 
             # epoch_iterator.set_description("loss {}".format(loss))
-            logger.info("Epoch {}/{} - Iter {} / {}, loss = {:.5f}, time used = {:.3f}s".format(epoch, int(args.num_train_epochs),step,
-                                                                                             len(train_dataloader),
-                                                                                             loss.item(),
-                                                                                             time.time() - start))
+            if args.tpu:
+                print("Epoch {}/{} - Iter {} / {}, loss = {:.5f}, time used = {:.3f}s".format(epoch, int(args.num_train_epochs),step,
+                                                                                                len(train_dataloader),
+                                                                                                loss.item(),
+                                                                                                time.time() - start))
+            else:
+                logger.info("Epoch {}/{} - Iter {} / {}, loss = {:.5f}, time used = {:.3f}s".format(epoch, int(args.num_train_epochs),step,
+                                                                                                len(train_dataloader),
+                                                                                                loss.item(),
+                                                                                                time.time() - start))
             if args.fp16:
                 with amp.scale_loss(loss, optimizer) as scaled_loss:
                     scaled_loss.backward()
@@ -298,14 +330,21 @@ def train(args, train_dataset, model, tokenizer):
                     model_to_save.save_pretrained(output_dir)
 
                     torch.save(args, os.path.join(output_dir, 'training_args.bin'))
-                    logger.info("Saving model checkpoint to %s", output_dir)
+                    if args.tpu:
+                        print("Saving model checkpoint to %s", output_dir)
+                    else:
+                        logger.info("Saving model checkpoint to %s", output_dir)
                     torch.save(optimizer.state_dict(), os.path.join(output_dir, 'optimizer.bin'))
                     torch.save(scheduler.state_dict(), os.path.join(output_dir, 'scheduler.bin'))
                     torch.save(args, os.path.join(output_dir, 'training_args.bin'))
                     torch.save(global_step, os.path.join(args.output_dir, 'global_step.bin'))
 
-                    logger.info("Saving model checkpoint, optimizer, global_step to %s", output_dir)
-                    logger.info("Saving model checkpoint, optimizer, global_step to %s", output_dir)
+                    if args.tpu:
+                        print("Saving model checkpoint, optimizer, global_step to %s", output_dir)
+                        print("Saving model checkpoint, optimizer, global_step to %s", output_dir)
+                    else:
+                        logger.info("Saving model checkpoint, optimizer, global_step to %s", output_dir)
+                        logger.info("Saving model checkpoint, optimizer, global_step to %s", output_dir)
                     if (global_step/args.save_steps) > args.max_save_checkpoints:
                         try:
                             shutil.rmtree(os.path.join(args.output_dir, 'checkpoint-{}'.format(global_step-args.max_save_checkpoints*args.save_steps)))
@@ -368,9 +407,14 @@ def evaluate(args, model, tokenizer, prefix="", epoch=0, global_step=0):
             eval_dataloader = DataLoader(eval_dataset, sampler=eval_sampler, batch_size=args.eval_batch_size, num_workers=multiprocessing.cpu_count(), pin_memory=True)
 
             # Eval!
-            logger.info("***** Running evaluation {} *****".format(prefix))
-            logger.info("  Num examples = %d", len(eval_dataset))
-            logger.info("  Batch size = %d", args.eval_batch_size)
+            if args.tpu:
+                print("***** Running evaluation {} *****".format(prefix))
+                print("  Num examples = %d", len(eval_dataset))
+                print("  Batch size = %d", args.eval_batch_size)
+            else:
+                logger.info("***** Running evaluation {} *****".format(prefix))
+                logger.info("  Num examples = %d", len(eval_dataset))
+                logger.info("  Batch size = %d", args.eval_batch_size)
             eval_loss = 0.0
             nb_eval_steps = 0
             preds = None
@@ -416,7 +460,10 @@ def evaluate(args, model, tokenizer, prefix="", epoch=0, global_step=0):
                 preds = np.squeeze(preds)
 
             result = compute_metrics(eval_task, preds, out_label_ids)
-            logger.info('{} result:{}'.format(dataset_type, result))
+            if args.tpu:
+                print('{} result:{}'.format(dataset_type, result))
+            else:
+                logger.info('{} result:{}'.format(dataset_type, result))
 
             results[dataset_type] = result
             save_result = str(results)
@@ -473,10 +520,16 @@ def load_and_cache_examples(args, task, tokenizer, dataset_type, evaluate=False)
         str(args.max_seq_length),
         str(task)))
     if os.path.exists(cached_features_file):
-        logger.info("Loading features from cached file %s", cached_features_file)
+        if args.tpu:
+            print("Loading features from cached file %s", cached_features_file)
+        else:
+            logger.info("Loading features from cached file %s", cached_features_file)
         features = torch.load(cached_features_file)
     else:
-        logger.info("Creating features from dataset file at %s", args.data_dir)
+        if args.tpu:
+            print("Creating features from dataset file at %s", args.data_dir)
+        else:
+            logger.info("Creating features from dataset file at %s", args.data_dir)
         label_list = processor.get_labels()
         if task in ['mnli', 'mnli-mm'] and args.model_type in ['roberta']:
             # HACK(label indices are swapped in RoBERTa pretrained model)
@@ -493,7 +546,10 @@ def load_and_cache_examples(args, task, tokenizer, dataset_type, evaluate=False)
             pad_token_segment_id=4 if args.model_type in ['xlnet'] else 0,
         )
         if args.local_rank in [-1, 0]:
-            logger.info("Saving features into cached file %s", cached_features_file)
+            if args.tpu:
+                print("Saving features into cached file %s", cached_features_file)
+            else:
+                logger.info("Saving features into cached file %s", cached_features_file)
             torch.save(features, cached_features_file)
 
         if args.local_rank == 0 and not evaluate:
@@ -983,13 +1039,18 @@ def main():
     args.device = device
 
     # Setup logging
-    if args.tpu:
-        logger = TpuLogger()
+    # if args.tpu:
+    #     logger.warning = print
+    #     logger.info = print
     logging.basicConfig(format = '%(asctime)s - %(levelname)s - %(name)s -   %(message)s',
                         datefmt = '%m/%d/%Y %H:%M:%S',
                         level = logging.INFO if args.local_rank in [-1, 0] else logging.WARN)
-    logger.warning("Process rank: %s, device: %s, n_gpu: %s, distributed training: %s, 16-bits training: %s",
+    if args.tpu:
+        print("Process rank: %s, device: %s, n_gpu: %s, distributed training: %s, 16-bits training: %s",
                     args.local_rank, device, args.n_gpu, bool(args.local_rank != -1), args.fp16)
+    else:
+        logger.warning("Process rank: %s, device: %s, n_gpu: %s, distributed training: %s, 16-bits training: %s",
+                        args.local_rank, device, args.n_gpu, bool(args.local_rank != -1), args.fp16)
 
     # Set seed
     set_seed(args)
@@ -1054,21 +1115,29 @@ def main():
 
     pretrained_model.to(args.device)
     tacred_model.to(args.device)
-    logger.info("Training/evaluation parameters %s", args)
+    if args.tpu:
+        print("Training/evaluation parameters %s", args)
+    else:
+        logger.info("Training/evaluation parameters %s", args)
 
     # Training
     if args.do_train:
         train_dataset = load_and_cache_examples(args, args.task_name, tokenizer, 'train', evaluate=False)
         global_step, tr_loss = train(args, train_dataset, model, tokenizer)
-        logger.info(" global_step = %s, average loss = %s", global_step, tr_loss)
+        if args.tpu:
+            print(" global_step = %s, average loss = %s", global_step, tr_loss)
+        else:
+            logger.info(" global_step = %s, average loss = %s", global_step, tr_loss)
 
     # Saving best-practices: if you use defaults names for the model, you can reload it using from_pretrained()
     if args.do_train and (args.local_rank == -1 or torch.distributed.get_rank() == 0):
         # Create output directory if needed
         if not os.path.exists(args.output_dir) and args.local_rank in [-1, 0]:
             os.makedirs(args.output_dir)
-
-        logger.info("Saving model checkpoint to %s", args.output_dir)
+        if args.tpu:
+            print("Saving model checkpoint to %s", args.output_dir)
+        else:
+            logger.info("Saving model checkpoint to %s", args.output_dir)
         # Save a trained model, configuration and tokenizer using `save_pretrained()`.
         # They can then be reloaded using `from_pretrained()`
         model_to_save = tacred_model.module if hasattr(tacred_model, 'module') else tacred_model  # Take care of distributed/parallel training
