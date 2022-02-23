@@ -1,31 +1,3 @@
-
-Skip to content
-Pull requests
-Issues
-Marketplace
-Explore
-@fnk93
-microsoft /
-K-Adapter
-Public
-
-Code
-Issues 7
-Pull requests
-Actions
-Projects
-Wiki
-Security
-
-    Insights
-
-K-Adapter/examples/run_finetune_openentity_adapter.py /
-@ruizewang
-ruizewang Initial commit
-Latest commit 3d15de2 on 30 Oct 2020
-History
-1 contributor
-executable file 904 lines (787 sloc) 46.8 KB
 # coding=utf-8
 # Copyright (c) Microsoft Corporation.
 # Licensed under the MIT license.
